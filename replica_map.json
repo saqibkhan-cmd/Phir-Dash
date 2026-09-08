@@ -1,0 +1,213 @@
+{
+ "ReplicaC1": {
+  "type": "shared_cloud",
+  "schemas": [
+   "Cloud1",
+   "Cloud2",
+   "Cloud3",
+   "Cloud4",
+   "Cloud5",
+   "Cloud6",
+   "Cloud7",
+   "Cloud8",
+   "Cloud9"
+  ]
+ },
+ "ReplicaC2": {
+  "type": "shared_cloud",
+  "schemas": [
+   "Cloud13",
+   "Cloud14",
+   "Cloud15",
+   "Cloud16",
+   "Cloud17",
+   "Cloud18",
+   "Cloud19",
+   "Cloud20",
+   "Cloud21",
+   "Cloud22",
+   "Cloud23",
+   "Cloud25"
+  ]
+ },
+ "ReplicaC3": {
+  "type": "shared_cloud",
+  "schemas": [
+   "Cloud26",
+   "Cloud27",
+   "Cloud28",
+   "Cloud29",
+   "Cloud30",
+   "Cloud31",
+   "Cloud32",
+   "Cloud33",
+   "Cloud34",
+   "Cloud35"
+  ]
+ },
+ "ReplicaC37": {
+  "type": "shared_cloud_foreign",
+  "schemas": [
+   "Cloud37"
+  ],
+  "note": "Kept separate - foreign clients"
+ },
+ "ReplicaE5": {
+  "type": "dedicated",
+  "schemas": [
+   "HealthyHeyFoods",
+   "AmalaEarth",
+   "Angara",
+   "Adachikan",
+   "AtsConnect",
+   "BuildingParadise",
+   "EternzFashionPrivateLimited",
+   "GNC",
+   "HamiltonStaging",
+   "HPZ",
+   "Leayanglobal",
+   "Nuawoman",
+   "PMCG",
+   "Stgbloomexim",
+   "Trustbasket",
+   "Imaraglobal",
+   "StgECloud",
+   "HLPL",
+   "Beardo",
+   "FabIndiaLtd",
+   "WishLink",
+   "FaballeyBusiness",
+   "PEP",
+   "Amydus2",
+   "IntlDemo"
+  ]
+ },
+ "ReplicaE6": {
+  "type": "dedicated",
+  "schemas": [
+   "ABFRL",
+   "Audacity",
+   "BataindiaLmtd",
+   "BedBath",
+   "BonOrganik",
+   "COYU",
+   "Caratlane",
+   "CottonWorld2",
+   "Donoshopmp",
+   "HealthKart",
+   "Imaraglobal",
+   "Inditex",
+   "Kupinda",
+   "Lakshya",
+   "MensaBrand",
+   "Myduroflexworld",
+   "MyntraInt",
+   "PharmEasy",
+   "Raymond",
+   "RituKumar1",
+   "Samsung",
+   "SdXpress",
+   "SmyttenENT",
+   "StgBestseller",
+   "StgLakshya",
+   "StgUrbanclap",
+   "Stgmrpl",
+   "SudathiSurat",
+   "SuperHouse",
+   "TCNS",
+   "TheLableCorp",
+   "TheVanca",
+   "Vmssnapdeal",
+   "Zivame"
+  ]
+ },
+ "ReplicaE7": {
+  "type": "dedicated",
+  "schemas": [
+   "Peppermint",
+   "MBZ",
+   "Primarc",
+   "Nymphaea1",
+   "Xpress",
+   "Baccabucci",
+   "Zed",
+   "Capl",
+   "Specsmakers",
+   "Brightlifecareindia",
+   "Urbanclap",
+   "Fabbag",
+   "Yuvdhi",
+   "Portronics",
+   "Sleepyhead",
+   "StagingInditex",
+   "Cred",
+   "Bestseller",
+   "YellowthreadUSA",
+   "Bersacheshoes",
+   "Bajaao"
+  ]
+ },
+ "ReplicaECloud1": {
+  "type": "dedicated_single_schema",
+  "schemas": [
+   "ECloud1"
+  ],
+  "note": "Dedicated server, one schema named ECloud<N> matching the replica number"
+ },
+ "ReplicaECloud2": {
+  "type": "dedicated_single_schema",
+  "schemas": [
+   "ECloud2"
+  ],
+  "note": "Dedicated server, one schema named ECloud<N> matching the replica number"
+ },
+ "ReplicaECloud3": {
+  "type": "dedicated_single_schema",
+  "schemas": [
+   "ECloud3"
+  ],
+  "note": "Dedicated server, one schema named ECloud<N> matching the replica number"
+ },
+ "ReplicaECloud4": {
+  "type": "dedicated_single_schema",
+  "schemas": [
+   "ECloud4"
+  ],
+  "note": "Dedicated server, one schema named ECloud<N> matching the replica number"
+ },
+ "ReplicaECloud5": {
+  "type": "dedicated_single_schema",
+  "schemas": [
+   "ECloud5"
+  ],
+  "note": "Dedicated server, one schema named ECloud<N> matching the replica number"
+ },
+ "ReplicaECloud6": {
+  "type": "dedicated_single_schema",
+  "schemas": [
+   "ECloud6"
+  ],
+  "note": "Dedicated server, one schema named ECloud<N> matching the replica number"
+ },
+ "ReplicaECloud7": {
+  "type": "dedicated_single_schema",
+  "schemas": [
+   "ECloud7"
+  ],
+  "note": "Dedicated server, one schema named ECloud<N> matching the replica number"
+ },
+ "ReplicaECloud8": {
+  "type": "dedicated_single_schema",
+  "schemas": [
+   "ECloud8"
+  ],
+  "note": "Dedicated server, one schema named ECloud<N> matching the replica number"
+ },
+ "ReplicaECloud9": {
+  "type": "dedicated_single_schema",
+  "schemas": [
+   "ECloud9"
+  ],
+  "note": "Dedicated server, one schema named ECloud<N> matching the replica number"
+ }
+}
