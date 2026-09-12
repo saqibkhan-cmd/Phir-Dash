@@ -33,10 +33,12 @@ def from_export(export_name, label=None):
     cfg = bv_by_name.get(export_name)
     if not cfg or not cfg.get("anchor_table") or not cfg.get("from_join_clause"):
         return None
-    fields = [{"label": c["business_name"], "expr": c["sql_expression"]}
-              for c in cfg["columns"][:MAX_FIELDS_PER_SUBCAT]]
+    all_fields = [{"label": c["business_name"], "expr": c["sql_expression"]}
+                  for c in cfg["columns"][:MAX_FIELDS_PER_SUBCAT]]
     filters = [{"label": f["business_name"], "condition": f.get("condition"), "type": f.get("type")}
                for f in cfg["filters"] if f.get("business_name")]
+    quick_labels = pick_quick_fields(all_fields)
+    quick_filter_labels = pick_quick_filters(filters)
     return {
         "label": label or export_name,
         "anchor_table": cfg["anchor_table"],
@@ -44,9 +46,55 @@ def from_export(export_name, label=None):
         "from_join_clause": cfg["from_join_clause"],
         "source": "export",
         "export_name": export_name,
-        "fields": fields,
+        "fields": all_fields,
+        "quick_fields": quick_labels,
         "filters": filters,
+        "quick_filters": quick_filter_labels,
     }
+
+
+# Fields commonly worth defaulting to: short, identifying, direct column
+# references (not big CASE expressions) whose label suggests it's a core
+# identifying/status/date field - a business person scanning a result
+# wants "what is this row, what state is it in, when did it happen", not
+# every one of the 25 columns a report happens to expose.
+QUICK_KEYWORDS = ["code", "status", "name", "date", "created", "updated", "qty", "quantity"]
+
+
+def pick_quick_fields(fields, max_quick=6):
+    """Prefer the report's own column order - real report authors already
+    put the most identifying fields first (confirmed: GRN starts with GRN
+    Code, Sale Orders starts with Sale Order Item Code). Re-sorting by a
+    keyword score alone scattered in fields from unrelated sub-sections of
+    a wide report - respecting original order and only using keywords to
+    filter (not reorder) fixes that."""
+    quick = [f["label"] for f in fields
+             if any(k in f["label"].lower() for k in QUICK_KEYWORDS)][:max_quick]
+    if not quick and fields:
+        quick = [f["label"] for f in fields[:max_quick]]
+    return quick
+
+
+# What someone searches BY first is different from what they see: an
+# identifying code/number is almost always the starting point ("I have
+# this one order/SKU/GRN, tell me about it"), then a date range. Things
+# like "Updated Since (Hours) - Deprecated" are not a newcomer's starting
+# point even though they're valid filters.
+FILTER_PRIORITY_KEYWORDS = ["code", "no.", "number", "#", "id is", " id", "date range"]
+
+
+def pick_quick_filters(filters, max_quick=3):
+    scored = []
+    for f in filters:
+        label_lower = f["label"].lower()
+        rank = next((i for i, k in enumerate(FILTER_PRIORITY_KEYWORDS) if k in label_lower), None)
+        if rank is not None:
+            scored.append((rank, f["label"]))
+    scored.sort(key=lambda x: x[0])
+    quick = [label for rank, label in scored[:max_quick]]
+    if not quick and filters:
+        quick = [filters[0]["label"]]
+    return quick
 
 
 def from_raw_table(table, label, field_names=None):
@@ -59,6 +107,7 @@ def from_raw_table(table, label, field_names=None):
         cols = cols[:MAX_FIELDS_PER_SUBCAT]
     alias = table  # single-table block - alias with its own name, no collision risk in isolation
     fields = [{"label": humanize(c["name"]), "expr": f"{alias}.{c['name']}"} for c in cols]
+    quick_labels = pick_quick_fields(fields)
     return {
         "label": label,
         "anchor_table": table,
@@ -67,7 +116,9 @@ def from_raw_table(table, label, field_names=None):
         "source": "raw",
         "export_name": None,
         "fields": fields,
+        "quick_fields": quick_labels,
         "filters": [],
+        "quick_filters": [],
     }
 
 
@@ -190,6 +241,8 @@ print("Sub-categories resolved:", sum(len(v) for v in resolved.values()))
 if dropped:
     print("Dropped (no verified source found):", dropped)
 
-json.dump(resolved, open("redash_query_builder/data/taxonomy.json", "w"), indent=1)
+output = {"categories": resolved}
+
+json.dump(output, open("redash_query_builder/data/taxonomy.json", "w"), indent=1)
 import os
 print("taxonomy.json size KB:", os.path.getsize("redash_query_builder/data/taxonomy.json") / 1024)
