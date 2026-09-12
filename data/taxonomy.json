@@ -1,0 +1,6001 @@
+{
+ "Sale Order": {
+  "Sale Orders": {
+   "label": "Sale Orders",
+   "anchor_table": "sale_order_item",
+   "anchor_alias": "soi",
+   "from_join_clause": "FROM sale_order_item soi\njoin sale_order so on (soi.`sale_order_id` = so.`id`)\nleft join address_detail ad1 on soi.`shipping_address_id` = ad1.`id`\nleft join state s on (s.iso2_code = ad1.state_code and s.country_code = ad1.country_code)\nleft join `address_detail` ad2 on so.`billing_address_id` = ad2.`id`\nleft join state s1 on (s1.iso2_code = ad2.state_code and s1.country_code = ad2.country_code)\nleft join item_type it on soi.`item_type_id` = it.`id`\nleft join category c on it.`category_id` = c.`id`\nleft join tax_type tt on tt.id = it.gst_tax_type_id\nleft join shipping_method sm  on soi.`shipping_method_id` = sm.`id`\nleft join shipping_package sp on soi.`shipping_package_id` = sp.`id`\nleft join prefetch_shipping_package_status psps on psps.tenant_id = so.tenant_id and psps.shipping_package_id = sp.id\nleft join shipping_package_type spt on sp.shipping_package_type_id=spt.id\nleft join invoice inv on inv.id=sp.invoice_id\nleft join gst_einvoice gei on gei.invoice_id = inv.id\nleft join invoice_item invt on invt.id = soi.invoice_item_id\nleft join return_manifest_item rmi on sp.id = rmi.shipping_package_id\nleft join reverse_pickup rp on rp.id = soi.reverse_pickup_id\nleft join reverse_pickup_item rpi on rp.id = rpi.reverse_pickup_id and rpi.sale_order_item_id = soi.id\nleft join facility f on soi.facility_id = f.id\nleft join party p on p.id=inv.from_party_id\nleft join customer cust on cust.id = so.customer_id\nleft join party p1 on p1.id=cust.id\nleft join channel ch on so.channel_id = ch.id\nleft join item i on (soi.item_id = i.id)\nleft join batch b on b.id = invt.batch_id\nleft join sale_order_metadata som on som.sale_order_id=so.id and som.type='PARENT_SALE_ORDER_CODE'\nLEFT JOIN party p2 ON p2.id = f.id\nLEFT JOIN return_manifest rm ON rm.id=rmi.return_manifest_id\nLEFT JOIN courier_return  cr ON cr.shipping_package_id = sp.id",
+   "source": "export",
+   "export_name": "Sale Orders",
+   "fields": [
+    {
+     "label": "Sale Order Item Code",
+     "expr": "CASE WHEN (soi.code REGEXP '^[0-9]+$' and length(soi.code) &gt; 12) THEN concat('`', soi.code) ELSE soi.code END"
+    },
+    {
+     "label": "Display Order Code",
+     "expr": "CASE WHEN (so.display_order_code REGEXP '^[0-9]+$' and length(so.display_order_code) &gt; 12) THEN concat('`', so.display_order_code) ELSE so.display_order_code END"
+    },
+    {
+     "label": "Reverse Pickup Code",
+     "expr": "rp.code"
+    },
+    {
+     "label": "Reverse Pickup Created Date",
+     "expr": "rp.created"
+    },
+    {
+     "label": "Reverse Pickup Reason",
+     "expr": "soi.reverse_pickup_reason"
+    },
+    {
+     "label": "Notification Email",
+     "expr": "so.notification_email"
+    },
+    {
+     "label": "Notification Mobile",
+     "expr": "so.notification_mobile"
+    },
+    {
+     "label": "Require Customization",
+     "expr": "soi.requires_customization"
+    },
+    {
+     "label": "COD",
+     "expr": "case when so.payment_method_code = 'COD' then 1 else 0 end"
+    },
+    {
+     "label": "Shipping Address Id",
+     "expr": "ad1.id"
+    },
+    {
+     "label": "Category",
+     "expr": "c.name"
+    },
+    {
+     "label": "Invoice Code",
+     "expr": "case when inv.display_code IS NULL  then inv.code else inv.display_code end"
+    },
+    {
+     "label": "Invoice Created",
+     "expr": "inv.created"
+    },
+    {
+     "label": "EWayBill No",
+     "expr": "gei.ewb_no"
+    },
+    {
+     "label": "EWayBill Date",
+     "expr": "gei.ewb_date"
+    },
+    {
+     "label": "EWayBill Valid Till",
+     "expr": "gei.ewb_valid_till"
+    },
+    {
+     "label": "Shipping Address Name",
+     "expr": "case when p1.name IS NULL  then ad1.name else p1.name end"
+    },
+    {
+     "label": "Shipping Address Line 1",
+     "expr": "ad1.address_line1"
+    },
+    {
+     "label": "Shipping Address Line 2",
+     "expr": "ad1.address_line2"
+    },
+    {
+     "label": "Shipping Address City",
+     "expr": "ad1.city"
+    },
+    {
+     "label": "Shipping Address State",
+     "expr": "s.name"
+    },
+    {
+     "label": "Shipping Address Country",
+     "expr": "ad1.country_code"
+    },
+    {
+     "label": "Shipping Address Pincode",
+     "expr": "ad1.pincode"
+    },
+    {
+     "label": "Shipping Address Latitude",
+     "expr": "ad1.latitude"
+    },
+    {
+     "label": "Shipping Address Longitude",
+     "expr": "ad1.longitude"
+    }
+   ],
+   "filters": [
+    {
+     "label": "Shipping Provider",
+     "condition": "sp.shipping_provider_name like (:shippingProvider)",
+     "type": "text"
+    },
+    {
+     "label": "Added in Date Range",
+     "condition": "so.created &gt; :addedOnStart and so.created &lt; :addedOnEnd and soi.created &gt; DATE_SUB(:addedOnStart, INTERVAL 10 MINUTE)",
+     "type": "daterange"
+    },
+    {
+     "label": "Dispatched in Date Range",
+     "condition": "sp.dispatch_time &gt; :dispatchedOnStart and sp.dispatch_time &lt; :dispatchedOnEnd",
+     "type": "daterange"
+    },
+    {
+     "label": "Invoiced in Date Range",
+     "condition": "inv.created &gt; :invoicedOnStart and inv.created &lt; :invoicedOnEnd",
+     "type": "daterange"
+    },
+    {
+     "label": "Returned in Date Range",
+     "condition": "rmi.created &gt; :returnedOnStart and rmi.created &lt; :returnedOnEnd",
+     "type": "daterange"
+    },
+    {
+     "label": "Updated in Date Range",
+     "condition": "soi.updated &gt; :updatedOnStart and soi.updated &lt; :updatedOnEnd",
+     "type": "daterange"
+    },
+    {
+     "label": "Updated Since (Hours) - Deprecated",
+     "condition": "soi.updated &gt; DATE_SUB(:exportExecutionTime, INTERVAL :updatedSince HOUR)",
+     "type": "text"
+    },
+    {
+     "label": "Created at channel in Date Range",
+     "condition": "so.display_order_date_time &gt; :channelCreatedDateRangeFilterStart and so.display_order_date_time &lt; :channelCreatedDateRangeFilterEnd",
+     "type": "daterange"
+    },
+    {
+     "label": "Sale Order Item Status",
+     "condition": "soi.status_code in (:status)",
+     "type": "multiselect"
+    },
+    {
+     "label": "Sale Order Status",
+     "condition": "so.status_code in (:statusSaleOrder)",
+     "type": "multiselect"
+    },
+    {
+     "label": "Payment Method",
+     "condition": "so.payment_method_code = :paymentMethodCode",
+     "type": "select"
+    },
+    {
+     "label": "On Hold",
+     "condition": "soi.on_hold = :onHold",
+     "type": "boolean"
+    },
+    {
+     "label": "Item Name Starts With",
+     "condition": "it.name like :itemTypeName",
+     "type": "text"
+    },
+    {
+     "label": "Item SkuCode",
+     "condition": "it.sku_code= :itemSkuCode",
+     "type": "text"
+    },
+    {
+     "label": "Channels",
+     "condition": "ch.code in (:channelFilter)",
+     "type": "multiselect"
+    },
+    {
+     "label": "In Category",
+     "condition": "c.id in (:categoryIds)",
+     "type": "multiselect"
+    },
+    {
+     "label": "Facility Code Filter",
+     "condition": "p2.id in :facilityFilter",
+     "type": "multiselect"
+    }
+   ]
+  },
+  "Sale Order Margins": {
+   "label": "Sale Order Margins",
+   "anchor_table": "sale_order_item",
+   "anchor_alias": "soi",
+   "from_join_clause": "FROM sale_order_item soi\njoin sale_order so on (soi.`sale_order_id` = so.`id`)\njoin item_type it on soi.`item_type_id` = it.`id`\njoin category c on it.`category_id` = c.`id`\nleft join shipping_package sp on soi.`shipping_package_id` = sp.`id`\nleft join invoice inv on inv.id=sp.invoice_id\nleft join invoice_item invt on (invt.invoice_id=inv.id and invt.item_type_id=soi.item_type_id and invt.total=(invt.quantity*soi.selling_price))\nleft join item i on i.id = soi.item_id\nleft join inflow_receipt_item iri on iri.id = i.inflow_receipt_item_id\nleft join inflow_receipt ir on iri.inflow_receipt_id = ir.id\nleft join purchase_order po on po.id = ir.purchase_order_id\nleft join party p on p.id=po.vendor_id\nleft join facility f on soi.facility_id = f.id",
+   "source": "export",
+   "export_name": "Sale Order Margins",
+   "fields": [
+    {
+     "label": "Sale Order Item Code",
+     "expr": "soi.code"
+    },
+    {
+     "label": "Display Order Code",
+     "expr": "so.display_order_code"
+    },
+    {
+     "label": "Customer Name",
+     "expr": "so.customer_name"
+    },
+    {
+     "label": "COD",
+     "expr": "case when so.payment_method_code = 'COD' then 1 else 0 end"
+    },
+    {
+     "label": "Category",
+     "expr": "c.name"
+    },
+    {
+     "label": "Invoice Code",
+     "expr": "inv.code"
+    },
+    {
+     "label": "Invoice Created",
+     "expr": "inv.created"
+    },
+    {
+     "label": "Item SKU Code",
+     "expr": "it.sku_code"
+    },
+    {
+     "label": "Facility",
+     "expr": "f.display_name"
+    },
+    {
+     "label": "Item Type Name",
+     "expr": "it.name"
+    },
+    {
+     "label": "Item Type Color",
+     "expr": "it.color"
+    },
+    {
+     "label": "Item Type Size",
+     "expr": "it.size"
+    },
+    {
+     "label": "Item Type Brand",
+     "expr": "it.brand"
+    },
+    {
+     "label": "Total Price",
+     "expr": "soi.total_price"
+    },
+    {
+     "label": "Selling Price",
+     "expr": "soi.selling_price"
+    },
+    {
+     "label": "Prepaid Amount",
+     "expr": "soi.prepaid_amount"
+    },
+    {
+     "label": "Discount",
+     "expr": "soi.discount"
+    },
+    {
+     "label": "Voucher Code",
+     "expr": "soi.voucher_code"
+    },
+    {
+     "label": "Shipping Charges",
+     "expr": "soi.shipping_charges"
+    },
+    {
+     "label": "Shipping Method Charges",
+     "expr": "soi.shipping_method_charges"
+    },
+    {
+     "label": "COD Service Charges",
+     "expr": "soi.cash_on_delivery_charges"
+    },
+    {
+     "label": "Order Date as dd/mm/yyyy hh:MM:ss",
+     "expr": "so.display_order_date_time"
+    },
+    {
+     "label": "Sale Order Code",
+     "expr": "so.code"
+    },
+    {
+     "label": "Sale Order Item Status",
+     "expr": "soi.status_code"
+    },
+    {
+     "label": "Shipping Package Code",
+     "expr": "sp.code"
+    }
+   ],
+   "filters": [
+    {
+     "label": "Added in Date Range",
+     "condition": "so.created &gt; :addedOnStart and so.created &lt; :addedOnEnd",
+     "type": "daterange"
+    },
+    {
+     "label": "Dispatched in Date Range",
+     "condition": "sp.dispatch_time &gt; :dispatchedOnStart and sp.dispatch_time &lt; :dispatchedOnEnd",
+     "type": "daterange"
+    },
+    {
+     "label": "Sale Order Item Status",
+     "condition": "soi.status_code in (:status)",
+     "type": "multiselect"
+    },
+    {
+     "label": "Sale Order Status",
+     "condition": "so.status_code in (:statusSaleOrder)",
+     "type": "multiselect"
+    },
+    {
+     "label": "Item Name Contains",
+     "condition": "it.name like :name",
+     "type": "text"
+    },
+    {
+     "label": "Payment Method",
+     "condition": "so.payment_method_code = :paymentMethodCode",
+     "type": "select"
+    },
+    {
+     "label": "On Hold",
+     "condition": "soi.on_hold = :onHold",
+     "type": "boolean"
+    },
+    {
+     "label": "Gift Wrap",
+     "condition": "soi.gift_wrap = :giftWrap",
+     "type": "boolean"
+    },
+    {
+     "label": "Updated Since",
+     "condition": null,
+     "type": null
+    }
+   ]
+  },
+  "Back Orders": {
+   "label": "Back Orders",
+   "anchor_table": "item_type_inventory_snapshot",
+   "anchor_alias": "itis",
+   "from_join_clause": "FROM item_type_inventory_snapshot itis\njoin item_type it on itis.item_type_id = it.id\njoin category c on it.category_id = c.id\nleft join vendor_item_type vit on (vit.item_type_id = it.id and vit.enabled = 1)\nleft join vendor v on (vit.vendor_id = v.id)\nleft join party p on (v.id = p.id and p.enabled = 1)",
+   "source": "export",
+   "export_name": "Back Orders",
+   "fields": [
+    {
+     "label": "Item Type Name",
+     "expr": "it.name"
+    },
+    {
+     "label": "Item SkuCode",
+     "expr": "it.sku_code"
+    },
+    {
+     "label": "Category Name",
+     "expr": "c.name"
+    },
+    {
+     "label": "Quantity To Raise",
+     "expr": "itis.open_sale - (itis.inventory + itis.putaway_pending + itis.open_purchase)"
+    },
+    {
+     "label": "Vendor SkuCode",
+     "expr": "group_concat(vit.vendor_sku_code)"
+    },
+    {
+     "label": "Vendor Name",
+     "expr": "group_concat(p.name)"
+    },
+    {
+     "label": "Unit Price",
+     "expr": "group_concat(vit.unit_price)"
+    },
+    {
+     "label": "Priority",
+     "expr": "group_concat(vit.priority)"
+    },
+    {
+     "label": "Updated",
+     "expr": "itis.updated"
+    }
+   ],
+   "filters": [
+    {
+     "label": "In Category",
+     "condition": "c.id in (:categoryIds)",
+     "type": "multiselect"
+    },
+    {
+     "label": "Updated Since (hours)",
+     "condition": null,
+     "type": null
+    }
+   ]
+  },
+  "Hopped Orders": {
+   "label": "Hopped orders",
+   "anchor_table": "hopped_sale_order_item_timeline",
+   "anchor_alias": "h",
+   "from_join_clause": "from hopped_sale_order_item_timeline h\nleft join sale_order so on so.id = h.sale_order_id\njoin sale_order_item soi on soi.id =h.sale_order_item_id\nleft join facility f on f.id = soi.facility_id\njoin item_type it on soi.item_type_id=it.id\njoin channel c on so.channel_id = c.id\nleft join user u on h.user_id = u.id",
+   "source": "export",
+   "export_name": "Hopped orders",
+   "fields": [
+    {
+     "label": "Product",
+     "expr": "it.sku_code"
+    },
+    {
+     "label": "Order",
+     "expr": "so.code"
+    },
+    {
+     "label": "Sale order item",
+     "expr": "soi.code"
+    },
+    {
+     "label": "Display Order Code",
+     "expr": "so.display_order_code"
+    },
+    {
+     "label": "channel Name",
+     "expr": "c.name"
+    },
+    {
+     "label": "Source Code",
+     "expr": "c.source_code"
+    },
+    {
+     "label": "Customer Name",
+     "expr": "so.customer_name"
+    },
+    {
+     "label": "Customer Email",
+     "expr": "so.notification_email"
+    },
+    {
+     "label": "Customer Mobile",
+     "expr": "so.notification_mobile"
+    },
+    {
+     "label": "Status",
+     "expr": "h.status_code"
+    },
+    {
+     "label": "Order Created At",
+     "expr": "so.created"
+    },
+    {
+     "label": "Assigned to facility At",
+     "expr": "h.assigned_to_facility_at"
+    },
+    {
+     "label": "User action taken at",
+     "expr": "h.user_action_taken_at"
+    },
+    {
+     "label": "Rejection reason",
+     "expr": "h.rejection_reason"
+    },
+    {
+     "label": "Action taken by",
+     "expr": "u.username"
+    },
+    {
+     "label": "Order Priority",
+     "expr": "so.priority"
+    },
+    {
+     "label": "Facility name",
+     "expr": "f.display_name"
+    }
+   ],
+   "filters": [
+    {
+     "label": "Created On",
+     "condition": "so.created  &gt; :addedOnStart and so.created &lt; :addedOnEnd",
+     "type": "daterange"
+    },
+    {
+     "label": "Updated Since (hours)",
+     "condition": null,
+     "type": null
+    },
+    {
+     "label": "Updated in Date Range",
+     "condition": "h.user_action_taken_at &gt; :updatedRangeStart and h.user_action_taken_at &lt; :updatedRangeEnd",
+     "type": "daterange"
+    },
+    {
+     "label": "Order # Contains",
+     "condition": "(so.code = :orderNumberFilter or so.display_order_code = :orderNumberFilter)",
+     "type": "text"
+    },
+    {
+     "label": "Customer Info Contains",
+     "condition": "(so.customer_name like :customerNameFilter OR so.notification_email like :customerNameFilter OR so.notification_mobile like :customerNameFilter)",
+     "type": "text"
+    },
+    {
+     "label": "Item Name Contains",
+     "condition": "(it.name like :itemNameFilter or it.sku_code like :itemNameFilter)",
+     "type": "text"
+    },
+    {
+     "label": "Status",
+     "condition": "h.status_code in (:statusFilter)",
+     "type": "multiselect"
+    },
+    {
+     "label": "Channel",
+     "condition": "so.channel_id in (:channelFilter)",
+     "type": "multiselect"
+    }
+   ]
+  }
+ },
+ "Inventory": {
+  "Shelfwise Inventory": {
+   "label": "Shelfwise Inventory",
+   "anchor_table": "item_type_inventory",
+   "anchor_alias": "iti",
+   "from_join_clause": "from item_type_inventory iti\nleft join batch b on (iti.batch_id=b.id)\njoin item_type it on iti.item_type_id = it.id\njoin shelf sh on iti.shelf_id = sh.id\njoin section sec on sh.section_id = sec.id\njoin category c on it.category_id = c.id\njoin facility f on (iti.facility_id = f.id)",
+   "source": "export",
+   "export_name": "Shelfwise Inventory",
+   "fields": [
+    {
+     "label": "Facility",
+     "expr": "f.display_name"
+    },
+    {
+     "label": "Item Type SKU Code",
+     "expr": "it.sku_code"
+    },
+    {
+     "label": "Item Type Name",
+     "expr": "it.name"
+    },
+    {
+     "label": "Inventory Type",
+     "expr": "iti.type"
+    },
+    {
+     "label": "Shelf",
+     "expr": "sh.code"
+    },
+    {
+     "label": "Quantity",
+     "expr": "iti.quantity"
+    },
+    {
+     "label": "Quantity Blocked",
+     "expr": "iti.quantity_blocked"
+    },
+    {
+     "label": "Quantity Not Found",
+     "expr": "iti.quantity_not_found"
+    },
+    {
+     "label": "Quantity Damaged",
+     "expr": "iti.quantity_damaged"
+    },
+    {
+     "label": "Priority",
+     "expr": "iti.priority"
+    },
+    {
+     "label": "Section",
+     "expr": "sec.code"
+    },
+    {
+     "label": "Batch Code",
+     "expr": "b.code"
+    },
+    {
+     "label": "Expiry",
+     "expr": "Date(b.expiry_date)"
+    }
+   ],
+   "filters": [
+    {
+     "label": "Batch Code Contains",
+     "condition": "b.code= :batchCode",
+     "type": "text"
+    },
+    {
+     "label": "Section Name Contains",
+     "condition": "sec.name like :sectionName",
+     "type": "text"
+    },
+    {
+     "label": "In Category",
+     "condition": "c.id in (:categoryId)",
+     "type": "multiselect"
+    },
+    {
+     "label": "ItemType Name Contains",
+     "condition": "it.name like :name",
+     "type": "text"
+    }
+   ]
+  },
+  "Inventory Worth": {
+   "label": "Inventory Worth",
+   "anchor_table": "item",
+   "anchor_alias": "i",
+   "from_join_clause": "from item i\njoin inflow_receipt_item iri on i.inflow_receipt_item_id = iri.id\njoin purchase_order_item poi on iri.purchase_order_item_id = poi.id\njoin item_type it on poi.item_type_id = it.id\njoin category c on it.category_id = c.id\njoin facility f on i.facility_id = f.id",
+   "source": "export",
+   "export_name": "Inventory Worth",
+   "fields": [
+    {
+     "label": "Facility",
+     "expr": "f.display_name"
+    },
+    {
+     "label": "Item Type SKU Code",
+     "expr": "it.sku_code"
+    },
+    {
+     "label": "Item Type Name",
+     "expr": "it.name"
+    },
+    {
+     "label": "Category",
+     "expr": "c.name"
+    },
+    {
+     "label": "Quantity",
+     "expr": "count(*)"
+    },
+    {
+     "label": "Total Value without taxes",
+     "expr": "SUM(iri.unit_price)"
+    },
+    {
+     "label": "Total Value with taxes",
+     "expr": "SUM(iri.total/iri.quantity)"
+    }
+   ],
+   "filters": [
+    {
+     "label": "In Category",
+     "condition": "c.id in (:categoryId)",
+     "type": "multiselect"
+    },
+    {
+     "label": "ItemType Name Contains",
+     "condition": "it.name like :name",
+     "type": "text"
+    }
+   ]
+  },
+  "Inventory Worth By Category": {
+   "label": "Inventory Worth By Category",
+   "anchor_table": "item",
+   "anchor_alias": "i",
+   "from_join_clause": "from item i\njoin inflow_receipt_item iri on i.inflow_receipt_item_id = iri.id\njoin purchase_order_item poi on iri.purchase_order_item_id = poi.id\njoin item_type it on poi.item_type_id = it.id\njoin category c on it.category_id = c.id",
+   "source": "export",
+   "export_name": "Inventory Worth By Category",
+   "fields": [
+    {
+     "label": "Category",
+     "expr": "c.name"
+    },
+    {
+     "label": "Category Code",
+     "expr": "c.code"
+    },
+    {
+     "label": "Quantity",
+     "expr": "count(*)"
+    },
+    {
+     "label": "Total Value without taxes",
+     "expr": "SUM(iri.unit_price)"
+    },
+    {
+     "label": "Total Value with taxes",
+     "expr": "SUM(iri.total/iri.quantity)"
+    }
+   ],
+   "filters": [
+    {
+     "label": "In Category",
+     "condition": "c.id in (:categoryId)",
+     "type": "multiselect"
+    },
+    {
+     "label": "ItemType Name Contains",
+     "condition": "it.name  like :name",
+     "type": "text"
+    }
+   ]
+  },
+  "Inventory Aging": {
+   "label": "Inventory Aging",
+   "anchor_table": "item",
+   "anchor_alias": "i",
+   "from_join_clause": "from item i\njoin item_type it on i.item_type_id=it.id\njoin category c on it.category_id=c.id\nleft join shelf s on s.id = i.shelf_id\nleft join inflow_receipt_item iri on iri.id=i.inflow_receipt_item_id\nleft join vendor v on v.id = i.vendor_id\nleft join party p on p.id = v.id\nleft join inflow_receipt ir on iri.inflow_receipt_id=ir.id\nleft join facility f on i.facility_id = f.id\nleft join putaway put on put.id=i.putaway_id",
+   "source": "export",
+   "export_name": "Inventory Aging",
+   "fields": [
+    {
+     "label": "Item Code",
+     "expr": "i.code"
+    },
+    {
+     "label": "Item Created On",
+     "expr": "i.created"
+    },
+    {
+     "label": "Vendor Name",
+     "expr": "p.name"
+    },
+    {
+     "label": "Vendor Code",
+     "expr": "p.code"
+    },
+    {
+     "label": "GRN Number",
+     "expr": "ir.code"
+    },
+    {
+     "label": "Category",
+     "expr": "c.name"
+    },
+    {
+     "label": "Item Type Name",
+     "expr": "it.name"
+    },
+    {
+     "label": "Facility",
+     "expr": "f.display_name"
+    },
+    {
+     "label": "Item Type skuCode",
+     "expr": "it.sku_code"
+    },
+    {
+     "label": "Color",
+     "expr": "it.color"
+    },
+    {
+     "label": "Size",
+     "expr": "it.size"
+    },
+    {
+     "label": "Brand",
+     "expr": "it.brand"
+    },
+    {
+     "label": "Expires On",
+     "expr": "iri.expiry"
+    },
+    {
+     "label": "Unit price without tax",
+     "expr": "iri.unit_price"
+    },
+    {
+     "label": "Unit price with tax",
+     "expr": "(iri.total/iri.quantity)"
+    },
+    {
+     "label": "Custom Field Values",
+     "expr": "i.item_details"
+    },
+    {
+     "label": "Days in warehouse",
+     "expr": "DATEDIFF(now(),i.created)"
+    },
+    {
+     "label": "Last Putaway Number",
+     "expr": "put.code"
+    },
+    {
+     "label": "Last Putaway Created",
+     "expr": "put.created"
+    },
+    {
+     "label": "Facility Id",
+     "expr": "i.facility_id"
+    },
+    {
+     "label": "Tenant Id",
+     "expr": "it.tenant_id"
+    }
+   ],
+   "filters": [
+    {
+     "label": "Item Name Contains",
+     "condition": "it.name like :name",
+     "type": "text"
+    },
+    {
+     "label": "Item SkuCode",
+     "condition": "it.sku_code= :itemSkuCode",
+     "type": "text"
+    },
+    {
+     "label": "Created Date Range",
+     "condition": "i.created  &gt; :addedOnStart and i.created &lt; :addedOnEnd",
+     "type": "daterange"
+    },
+    {
+     "label": "Facility Filter",
+     "condition": "(:facilityId is null or i.facility_id = :facilityId)",
+     "type": "text"
+    },
+    {
+     "label": "Tenant Filter",
+     "condition": "(it.tenant_id = :tenantId)",
+     "type": "text"
+    }
+   ]
+  },
+  "Inventory Ledger": {
+   "label": "Inventory Ledger",
+   "anchor_table": "inventory_ledger",
+   "anchor_alias": "il",
+   "from_join_clause": "from inventory_ledger il\njoin item_type it on il.sku_code = it.sku_code\nleft join ledger_sku_opening_counter lsoc on il.facility_id = lsoc.facility_id and il.sku_code = lsoc.sku_code",
+   "source": "export",
+   "export_name": "Inventory Ledger",
+   "fields": [
+    {
+     "label": "SKU Code",
+     "expr": "il.sku_code"
+    },
+    {
+     "label": "Date",
+     "expr": "DATE_FORMAT(il.created,'%d-%b-%y')"
+    },
+    {
+     "label": "Opening Balance",
+     "expr": "case when il.created=MIN(il.created) then (case when lsoc.counter is NULL then 0 when old_balance = -99999 then lsoc.counter else  old_balance end )  else  NULL end"
+    },
+    {
+     "label": "GRN Count(Add)",
+     "expr": "SUM(case when transaction_type = 'GRN' then abs(quantity)  else 0 end)"
+    },
+    {
+     "label": "Inbound Gatepass Stock Transfer(Add)",
+     "expr": "SUM(case when transaction_type = 'INBOUND_STOCK_TRANSFER' then abs(quantity)  else 0 end)"
+    },
+    {
+     "label": "Outbound Gatepass Return Count(Add)",
+     "expr": "SUM(case when transaction_type = 'OUTBOUND_GATE_PASS_RETURN' then abs(quantity)  else 0 end)"
+    },
+    {
+     "label": "Putaway Cancelled/Return Count(Add)",
+     "expr": "SUM(case when transaction_type = 'RETURN' then abs(quantity)  else 0 end)"
+    },
+    {
+     "label": "Inventory Adjustment Count",
+     "expr": "SUM(case when transaction_type = 'INVENTORY_ADJUSTMENT' then abs(quantity)  else 0 end)"
+    },
+    {
+     "label": "Invoice Count(Less)",
+     "expr": "SUM(case when transaction_type = 'INVOICE_CREATION' or transaction_type = 'SALE_ORDER_DISPATCH' then abs(quantity)  else 0 end)"
+    },
+    {
+     "label": "Outbound Gatepass Count(Less)",
+     "expr": "SUM(case when transaction_type = 'OUTBOUND_GATE_PASS' then abs(quantity) else 0 end)"
+    },
+    {
+     "label": "Brand",
+     "expr": "it.brand"
+    },
+    {
+     "label": "Closing Balance",
+     "expr": "(case when il.created=MIN(il.created) then (case when lsoc.counter is NULL then 0 when old_balance = -99999 then lsoc.counter else  old_balance end )  else  0 end) + sum(quantity)"
+    }
+   ],
+   "filters": [
+    {
+     "label": "SKU Code",
+     "condition": "il.sku_code= :skuCode",
+     "type": "text"
+    },
+    {
+     "label": "Created Date Range",
+     "condition": "il.created  &gt; :addedOnStart and il.created &lt; :addedOnEnd",
+     "type": "daterange"
+    }
+   ]
+  },
+  "Inventory Adjustment": {
+   "label": "Inventory Adjustment",
+   "anchor_table": "inventory_adjustment",
+   "anchor_alias": "ia",
+   "from_join_clause": "from inventory_adjustment ia\nleft join item_type it on (ia.sku_code=it.sku_code)\nleft join facility f on (ia.facility_id=f.id)",
+   "source": "export",
+   "export_name": "Inventory Adjustment",
+   "fields": [
+    {
+     "label": "Facility",
+     "expr": "f.display_name"
+    },
+    {
+     "label": "Adjustment Type",
+     "expr": "ia.adjustment_type"
+    },
+    {
+     "label": "SKU Code",
+     "expr": "ia.sku_code"
+    },
+    {
+     "label": "Item Name",
+     "expr": "ia.item_type_name"
+    },
+    {
+     "label": "from shelf code",
+     "expr": "ia.from_shelf_code"
+    },
+    {
+     "label": "to shelf code",
+     "expr": "ia.to_shelf_code"
+    },
+    {
+     "label": "inventory type",
+     "expr": "ia.inventory_type"
+    },
+    {
+     "label": "username",
+     "expr": "ia.username"
+    },
+    {
+     "label": "Quantity",
+     "expr": "ia.quantity"
+    },
+    {
+     "label": "created",
+     "expr": "ia.created"
+    },
+    {
+     "label": "updated",
+     "expr": "ia.updated"
+    },
+    {
+     "label": "old_quantity",
+     "expr": "ia.old_quantity"
+    },
+    {
+     "label": "Remarks",
+     "expr": "ia.remarks"
+    }
+   ],
+   "filters": [
+    {
+     "label": "Added in Date Range",
+     "condition": "ia.created &gt; :addedOnStart and ia.created &lt; :addedOnEnd",
+     "type": "daterange"
+    }
+   ]
+  },
+  "Reorder Report": {
+   "label": "Reorder Report",
+   "anchor_table": "reorder_config",
+   "anchor_alias": "rc",
+   "from_join_clause": "from reorder_config rc\njoin item_type it on rc.item_type_id = it.id\njoin facility f on rc.facility_id = f.id\njoin item_type_inventory_snapshot itis on it.id=itis.item_type_id\njoin vendor_item_type vit on it.id = vit.item_type_id\nleft join category c on c.id = it.category_id",
+   "source": "export",
+   "export_name": "Reorder Report",
+   "fields": [
+    {
+     "label": "SKU",
+     "expr": "it.sku_code"
+    },
+    {
+     "label": "Name",
+     "expr": "it.name"
+    },
+    {
+     "label": "Category",
+     "expr": "c.name"
+    },
+    {
+     "label": "Facility",
+     "expr": "f.display_name"
+    },
+    {
+     "label": "Reorder Threshold",
+     "expr": "rc.reorder_threshold"
+    },
+    {
+     "label": "Reorder Quantity",
+     "expr": "rc.reorder_quantity"
+    },
+    {
+     "label": "Open Purchase",
+     "expr": "itis.open_purchase"
+    },
+    {
+     "label": "Unit Price",
+     "expr": "vit.unit_price"
+    },
+    {
+     "label": "Inventory",
+     "expr": "itis.inventory"
+    },
+    {
+     "label": "Total Sales",
+     "expr": "T.last_days_sale"
+    }
+   ],
+   "filters": []
+  },
+  "Fast Moving SKU": {
+   "label": "Fast Moving SKU",
+   "anchor_table": "item_type",
+   "anchor_alias": "it",
+   "from_join_clause": "from  item_type it\njoin item_type_inventory_snapshot itis on it.id=itis.item_type_id",
+   "source": "export",
+   "export_name": "Fast Moving SKU",
+   "fields": [
+    {
+     "label": "Sku Code",
+     "expr": "it.sku_code"
+    },
+    {
+     "label": "Name",
+     "expr": "it.name"
+    },
+    {
+     "label": "Inventory",
+     "expr": "sum(itis.inventory)"
+    },
+    {
+     "label": "Total Sales",
+     "expr": "T.last_days_sale"
+    },
+    {
+     "label": "Day Of Inventory",
+     "expr": "(CAST(sum(itis.inventory)/(T.last_days_sale/DATEDIFF(DATE_ADD(now(),Interval 30 day),now())) as UNSIGNED))"
+    }
+   ],
+   "filters": []
+  },
+  "Expiring/Expired Inventory": {
+   "label": "Batching Expired Inventory",
+   "anchor_table": "item_type",
+   "anchor_alias": "it",
+   "from_join_clause": "from item_type it\njoin item_type_inventory iti on it.id = iti.item_type_id\njoin batch b on iti.batch_id = b.id\njoin shelf s on s.id = iti.shelf_id\njoin category c on it.category_id=c.id",
+   "source": "export",
+   "export_name": "Batching Expired Inventory",
+   "fields": [
+    {
+     "label": "SKU Code",
+     "expr": "it.sku_code"
+    },
+    {
+     "label": "Product Description",
+     "expr": "it.description"
+    },
+    {
+     "label": "Batch Code",
+     "expr": "b.code"
+    },
+    {
+     "label": "Shelf Code",
+     "expr": "s.code"
+    },
+    {
+     "label": "Quantity",
+     "expr": "iti.quantity"
+    },
+    {
+     "label": "Date of Expiry",
+     "expr": "b.expiry_date"
+    },
+    {
+     "label": "Dispatch Tolerance",
+     "expr": "it.dispatch_expiry_tolerance"
+    }
+   ],
+   "filters": [
+    {
+     "label": "Expired or About to Expire",
+     "condition": "case when strcmp(:expiredAboutToExpireFilter,'expired')=0 then expired=true when strcmp(:expiredAboutToExpireFilter,'about_to_expire')=0 then about_to_expire=true when strcmp(:expiredAboutToExpireFilter,'both')=0 then expired=true or about_to_expire=true end",
+     "type": "select"
+    },
+    {
+     "label": "Category",
+     "condition": "c.id in (:category)",
+     "type": "multiselect"
+    }
+   ]
+  }
+ },
+ "PO": {
+  "Purchase Orders": {
+   "label": "Purchase Orders",
+   "anchor_table": "purchase_order_item",
+   "anchor_alias": "poi",
+   "from_join_clause": "from purchase_order_item poi\njoin purchase_order po on poi.purchase_order_id = po.id\njoin user u on po.user_id = u.id\njoin vendor v on po.vendor_id = v.id\njoin party p on v.id = p.id\njoin item_type it on poi.item_type_id = it.id\nleft join tax_type tt on tt.id = it.gst_tax_type_id\njoin category c on it.category_id = c.id\njoin facility f on po.facility_id = f.id",
+   "source": "export",
+   "export_name": "Purchase Orders",
+   "fields": [
+    {
+     "label": "PO Code",
+     "expr": "po.code"
+    },
+    {
+     "label": "Created",
+     "expr": "poi.created"
+    },
+    {
+     "label": "Type",
+     "expr": "po.type"
+    },
+    {
+     "label": "PO Created By",
+     "expr": "u.username"
+    },
+    {
+     "label": "PO Approved Date",
+     "expr": "po.approve_time"
+    },
+    {
+     "label": "Delivery Date",
+     "expr": "po.delivery_date"
+    },
+    {
+     "label": "Item Type Name",
+     "expr": "it.name"
+    },
+    {
+     "label": "Item SkuCode",
+     "expr": "it.sku_code"
+    },
+    {
+     "label": "Category",
+     "expr": "c.name"
+    },
+    {
+     "label": "HSN Code",
+     "expr": "it.hsn_code"
+    },
+    {
+     "label": "GST Tax Type Code",
+     "expr": "tt.code"
+    },
+    {
+     "label": "Vendor Name",
+     "expr": "p.name"
+    },
+    {
+     "label": "Vendor Code",
+     "expr": "p.code"
+    },
+    {
+     "label": "Vendor SkuCode",
+     "expr": "poi.vendor_sku_code"
+    },
+    {
+     "label": "Order Quantity",
+     "expr": "poi.quantity"
+    },
+    {
+     "label": "Recieved Quantity",
+     "expr": "poi.received_quantity"
+    },
+    {
+     "label": "Rejected Quantity",
+     "expr": "poi.rejected_quantity"
+    },
+    {
+     "label": "Pending Quantity",
+     "expr": "poi.quantity - poi.received_quantity"
+    },
+    {
+     "label": "PO Ageing (Days)",
+     "expr": "DATEDIFF(now(), poi.created)"
+    },
+    {
+     "label": "% Pending",
+     "expr": "(poi.quantity - poi.received_quantity) * 100/poi.quantity"
+    },
+    {
+     "label": "% Rejection",
+     "expr": "rejected_quantity * 100/poi.quantity"
+    },
+    {
+     "label": "Facility",
+     "expr": "f.display_name"
+    },
+    {
+     "label": "Unit Price",
+     "expr": "poi.unit_price"
+    },
+    {
+     "label": "Sub Total",
+     "expr": "poi.subtotal"
+    },
+    {
+     "label": "CGST",
+     "expr": "poi.central_gst"
+    }
+   ],
+   "filters": [
+    {
+     "label": "Purchase Order No.",
+     "condition": "po.code= :purchaseOrderCode",
+     "type": "text"
+    },
+    {
+     "label": "In Category",
+     "condition": "c.id in (:categoryIds)",
+     "type": "multiselect"
+    },
+    {
+     "label": "Item Name Contains",
+     "condition": "it.name like :itemTypeName",
+     "type": "text"
+    },
+    {
+     "label": "Item Type SkuCode",
+     "condition": "it.sku_code= :itemSkuCode",
+     "type": "text"
+    },
+    {
+     "label": "User Name Contains",
+     "condition": "u.username like :userName",
+     "type": "text"
+    },
+    {
+     "label": "Vendor Name Contains",
+     "condition": "p.name like :vendorName",
+     "type": "text"
+    },
+    {
+     "label": "Purchase Order Status",
+     "condition": "po.status_code in (:statusPurchaseOrder)",
+     "type": "multiselect"
+    },
+    {
+     "label": "Vendor SkuCode",
+     "condition": "poi.vendor_sku_code= :vendorSku",
+     "type": "text"
+    },
+    {
+     "label": "In Date Range",
+     "condition": "poi.created &gt; :addedOnStart and poi.created &lt; :addedOnEnd",
+     "type": "daterange"
+    },
+    {
+     "label": "Updated Since (hours)",
+     "condition": null,
+     "type": null
+    }
+   ]
+  },
+  "GRN": {
+   "label": "GRN",
+   "anchor_table": "inflow_receipt_item",
+   "anchor_alias": "iri",
+   "from_join_clause": "from inflow_receipt_item iri\nleft join batch b on iri.batch_id=b.id\njoin inflow_receipt ir on iri.inflow_receipt_id = ir.id\njoin user u on ir.user_id = u.id\njoin purchase_order_item poi on iri.purchase_order_item_id = poi.id\njoin item_type it on iri.item_type_id = it.id\njoin purchase_order po on poi.purchase_order_id = po.id\njoin vendor v on po.vendor_id = v.id\njoin party p on v.id = p.id\njoin category c on c.id=it.category_id\njoin facility f on ir.facility_id = f.id\nLEFT JOIN putaway_entity_mapping pem ON pem.inflow_receipt_id = ir.id\nLEFT JOIN putaway pu ON pu.id = pem.putaway_id",
+   "source": "export",
+   "export_name": "GRN",
+   "fields": [
+    {
+     "label": "GRN Code",
+     "expr": "ir.code"
+    },
+    {
+     "label": "GRN Date",
+     "expr": "ir.created"
+    },
+    {
+     "label": "GRN Created By",
+     "expr": "u.username"
+    },
+    {
+     "label": "Item SkuCode",
+     "expr": "it.sku_code"
+    },
+    {
+     "label": "Item Type Name",
+     "expr": "it.name"
+    },
+    {
+     "label": "Item Type Color",
+     "expr": "it.color"
+    },
+    {
+     "label": "Item Type Size",
+     "expr": "it.size"
+    },
+    {
+     "label": "Item Type Brand",
+     "expr": "it.brand"
+    },
+    {
+     "label": "Facility",
+     "expr": "f.display_name"
+    },
+    {
+     "label": "Category",
+     "expr": "c.name"
+    },
+    {
+     "label": "Batch Code",
+     "expr": "b.code"
+    },
+    {
+     "label": "Additional Cost",
+     "expr": "iri.additional_cost"
+    },
+    {
+     "label": "Vendor SkuCode",
+     "expr": "poi.vendor_sku_code"
+    },
+    {
+     "label": "Vendor Name",
+     "expr": "p.name"
+    },
+    {
+     "label": "Vendor Code",
+     "expr": "p.code"
+    },
+    {
+     "label": "GRN Invoice No",
+     "expr": "ir.vendor_invoice_number"
+    },
+    {
+     "label": "GRN Invoice Date",
+     "expr": "ir.vendor_invoice_date"
+    },
+    {
+     "label": "PO Code",
+     "expr": "po.code"
+    },
+    {
+     "label": "PO Date",
+     "expr": "po.created"
+    },
+    {
+     "label": "Quantity Received",
+     "expr": "(iri.quantity)"
+    },
+    {
+     "label": "Quantity Rejected",
+     "expr": "(iri.rejected_quantity)"
+    },
+    {
+     "label": "Percentage Rejection",
+     "expr": "(iri.rejected_quantity)*100/(iri.quantity)"
+    },
+    {
+     "label": "Values of Goods Received without taxes",
+     "expr": "iri.subtotal"
+    },
+    {
+     "label": "Values of Goods Received with taxes",
+     "expr": "iri.total"
+    },
+    {
+     "label": "Values of Goods Rejected without taxes",
+     "expr": "(iri.rejected_quantity * iri.unit_price)"
+    }
+   ],
+   "filters": [
+    {
+     "label": "GRN Code",
+     "condition": "ir.code= :grnCode",
+     "type": "text"
+    },
+    {
+     "label": "Item Name Contains",
+     "condition": "it.name like :itemTypeName",
+     "type": "text"
+    },
+    {
+     "label": "Item SkuCode",
+     "condition": "it.sku_code= :itemSkuCode",
+     "type": "text"
+    },
+    {
+     "label": "Vendor Name Contains",
+     "condition": "p.name like :vendorName",
+     "type": "text"
+    },
+    {
+     "label": "GRN Status",
+     "condition": "ir.status_code in (:statusInflowReceipt)",
+     "type": "multiselect"
+    },
+    {
+     "label": "Received Date Range",
+     "condition": "iri.created  &gt; :addedOnStart and iri.created &lt; :addedOnEnd",
+     "type": "daterange"
+    },
+    {
+     "label": "Only Rejected Items",
+     "condition": "iri.rejected_quantity &gt; 0",
+     "type": "boolean"
+    },
+    {
+     "label": "Updated in Date Range",
+     "condition": "iri.updated &gt; :updatedOnStart and iri.updated &lt; :updatedOnEnd",
+     "type": "daterange"
+    },
+    {
+     "label": "Updated Since (Hours) - Deprecated",
+     "condition": "iri.updated &gt; DATE_SUB(:exportExecutionTime, INTERVAL :updatedSince HOUR)",
+     "type": "text"
+    }
+   ]
+  },
+  "GRN-PO Mapping": {
+   "label": "GRN-PO Mapping",
+   "anchor_table": "inflow_receipt_item",
+   "anchor_alias": "iri",
+   "from_join_clause": "from inflow_receipt_item iri\nleft join batch b on iri.batch_id=b.id\njoin inflow_receipt ir on iri.inflow_receipt_id = ir.id\njoin user u on ir.user_id = u.id\njoin purchase_order_item poi on iri.purchase_order_item_id = poi.id\njoin item_type it on iri.item_type_id = it.id\njoin purchase_order po on poi.purchase_order_id = po.id\njoin vendor v on po.vendor_id = v.id\njoin party p on v.id = p.id\njoin category c on c.id=it.category_id\njoin facility f on ir.facility_id = f.id",
+   "source": "export",
+   "export_name": "GRN-PO Mapping",
+   "fields": [
+    {
+     "label": "GRN Code",
+     "expr": "ir.code"
+    },
+    {
+     "label": "GRN Date",
+     "expr": "ir.created"
+    },
+    {
+     "label": "GRN Created By",
+     "expr": "u.username"
+    },
+    {
+     "label": "Item SkuCode",
+     "expr": "it.sku_code"
+    },
+    {
+     "label": "Item Type Name",
+     "expr": "it.name"
+    },
+    {
+     "label": "Item Type Color",
+     "expr": "it.color"
+    },
+    {
+     "label": "Item Type Size",
+     "expr": "it.size"
+    },
+    {
+     "label": "Item Type Brand",
+     "expr": "it.brand"
+    },
+    {
+     "label": "Facility",
+     "expr": "f.display_name"
+    },
+    {
+     "label": "Category",
+     "expr": "c.name"
+    },
+    {
+     "label": "Vendor Batch Code",
+     "expr": "b.code"
+    },
+    {
+     "label": "Additional Cost",
+     "expr": "iri.additional_cost"
+    },
+    {
+     "label": "Vendor SkuCode",
+     "expr": "poi.vendor_sku_code"
+    },
+    {
+     "label": "Vendor Name",
+     "expr": "p.name"
+    },
+    {
+     "label": "Vendor Code",
+     "expr": "p.code"
+    },
+    {
+     "label": "GRN Invoice No",
+     "expr": "ir.vendor_invoice_number"
+    },
+    {
+     "label": "GRN Invoice Date",
+     "expr": "ir.vendor_invoice_date"
+    },
+    {
+     "label": "PO Code",
+     "expr": "po.code"
+    },
+    {
+     "label": "PO Date",
+     "expr": "po.created"
+    },
+    {
+     "label": "Order Quantity",
+     "expr": "poi.quantity"
+    },
+    {
+     "label": "Quantity Received",
+     "expr": "(iri.quantity)"
+    },
+    {
+     "label": "Quantity Rejected",
+     "expr": "(iri.rejected_quantity)"
+    },
+    {
+     "label": "Percentage Rejection",
+     "expr": "(iri.rejected_quantity)*100/(iri.quantity)"
+    },
+    {
+     "label": "Values of Goods Received without taxes",
+     "expr": "iri.subtotal"
+    },
+    {
+     "label": "Values of Goods Received with taxes",
+     "expr": "iri.total"
+    }
+   ],
+   "filters": [
+    {
+     "label": "GRN Code",
+     "condition": "ir.code= :grnCode",
+     "type": "text"
+    },
+    {
+     "label": "Item Name Contains",
+     "condition": "it.name like :itemTypeName",
+     "type": "text"
+    },
+    {
+     "label": "Item SkuCode",
+     "condition": "it.sku_code= :itemSkuCode",
+     "type": "text"
+    },
+    {
+     "label": "Vendor Name Contains",
+     "condition": "p.name like :vendorName",
+     "type": "text"
+    },
+    {
+     "label": "GRN Status",
+     "condition": "ir.status_code in (:statusInflowReceipt)",
+     "type": "multiselect"
+    },
+    {
+     "label": "Received Date Range",
+     "condition": "iri.created  &gt; :addedOnStart and iri.created &lt; :addedOnEnd",
+     "type": "daterange"
+    },
+    {
+     "label": "Only Rejected Items",
+     "condition": null,
+     "type": null
+    },
+    {
+     "label": "Updated Since (hours)",
+     "condition": null,
+     "type": null
+    }
+   ]
+  },
+  "Vendors": {
+   "label": "Vendors",
+   "anchor_table": "vendor",
+   "anchor_alias": "v",
+   "from_join_clause": "from vendor v\njoin party p on (v.id = p.id)\nleft join party_contact_type pct on (pct.code='PRIMARY')\nleft join party_contact pc on (pc.party_contact_type_id = pct.id and pc.party_id = p.id)\nleft join party_address_type addr1Type on (addr1Type.code='SHIPPING')\nleft join party_address addr1 on (addr1Type.id = addr1.party_address_type_id and addr1.party_id = p.id)\nleft join state addr1State on (addr1.state_code = addr1State.iso2_code and addr1State.country_code = addr1.country_code)\nleft join party_address_type addr2Type on (addr2Type.code='BILLING')\nleft join party_address addr2 on (addr2Type.id = addr2.party_address_type_id and addr2.party_id = p.id)\nleft join state addr2State on (addr2.state_code = addr2State.iso2_code and addr2State.country_code = addr2.country_code)\nleft join vendor_agreement va on (va.vendor_id = v.id  and va.name not like 'TRANSIT%')\nleft join user u on (u.id=v.user_id)",
+   "source": "export",
+   "export_name": "Vendors",
+   "fields": [
+    {
+     "label": "Vendor Code",
+     "expr": "p.code"
+    },
+    {
+     "label": "Vendor Name",
+     "expr": "p.name"
+    },
+    {
+     "label": "PAN",
+     "expr": "p.pan"
+    },
+    {
+     "label": "TIN",
+     "expr": "p.tin"
+    },
+    {
+     "label": "Created",
+     "expr": "date_format(p.created, '%d/%m/%Y')"
+    },
+    {
+     "label": "CST Number",
+     "expr": "p.cst_number"
+    },
+    {
+     "label": "Service Tax Number",
+     "expr": "p.st_number"
+    },
+    {
+     "label": "Website",
+     "expr": "p.website"
+    },
+    {
+     "label": "Primary Contact Name",
+     "expr": "pc.name"
+    },
+    {
+     "label": "Primary Contact Email",
+     "expr": "pc.email"
+    },
+    {
+     "label": "Primary Contact Phone",
+     "expr": "pc.phone"
+    },
+    {
+     "label": "Shipping Address Line1",
+     "expr": "addr1.address_line1"
+    },
+    {
+     "label": "Shipping Address Line2",
+     "expr": "addr1.address_line2"
+    },
+    {
+     "label": "Shipping Address City",
+     "expr": "addr1.city"
+    },
+    {
+     "label": "Shipping Address State",
+     "expr": "addr1State.name"
+    },
+    {
+     "label": "Shipping Address Pincode",
+     "expr": "addr1.pincode"
+    },
+    {
+     "label": "Shipping Address Phone",
+     "expr": "addr1.phone"
+    },
+    {
+     "label": "Billing Address Line1",
+     "expr": "addr2.address_line1"
+    },
+    {
+     "label": "Billing Address Line2",
+     "expr": "addr2.address_line2"
+    },
+    {
+     "label": "Billing Address City",
+     "expr": "addr2.city"
+    },
+    {
+     "label": "Billing Address State",
+     "expr": "addr2State.name"
+    },
+    {
+     "label": "Billing Address Pincode",
+     "expr": "addr2.pincode"
+    },
+    {
+     "label": "Billing Address Phone",
+     "expr": "addr2.phone"
+    },
+    {
+     "label": "Purchase Expiry Period",
+     "expr": "v.purchase_expiry_period"
+    },
+    {
+     "label": "Agreement Name",
+     "expr": "va.name"
+    }
+   ],
+   "filters": [
+    {
+     "label": "Created in Date Range",
+     "condition": "p.created &gt; :addedOnStart and p.created &lt; :addedOnEnd",
+     "type": "daterange"
+    },
+    {
+     "label": "Updated Since (hours)",
+     "condition": null,
+     "type": null
+    },
+    {
+     "label": "Enabled",
+     "condition": "p.enabled = :enable",
+     "type": "boolean"
+    }
+   ]
+  },
+  "Vendor Item Master": {
+   "label": "Vendor Item Master",
+   "anchor_table": "vendor_item_type",
+   "anchor_alias": "vit",
+   "from_join_clause": "from vendor_item_type vit\njoin item_type it on vit.item_type_id = it.id\njoin vendor v on vit.vendor_id = v.id\njoin party p on v.id = p.id\njoin facility f on p.facility_id=f.id",
+   "source": "export",
+   "export_name": "Vendor Item Master",
+   "fields": [
+    {
+     "label": "Facility",
+     "expr": "f.display_name"
+    },
+    {
+     "label": "Product Code",
+     "expr": "it.sku_code"
+    },
+    {
+     "label": "Unit Price",
+     "expr": "vit.unit_price"
+    },
+    {
+     "label": "Inventory",
+     "expr": "vit.vendor_inventory"
+    },
+    {
+     "label": "Vendor Code",
+     "expr": "p.code"
+    },
+    {
+     "label": "Vendor SkuCode",
+     "expr": "vit.vendor_sku_code"
+    },
+    {
+     "label": "Lead Time (in Hours)",
+     "expr": "vit.lead_time"
+    },
+    {
+     "label": "Priority",
+     "expr": "vit.priority"
+    },
+    {
+     "label": "Enabled",
+     "expr": "vit.enabled"
+    },
+    {
+     "label": "Updated",
+     "expr": "vit.updated"
+    }
+   ],
+   "filters": [
+    {
+     "label": "Vendor Code",
+     "condition": "p.code = :vendorCode",
+     "type": "text"
+    },
+    {
+     "label": "Vendor SkuCode",
+     "condition": "vit.vendor_sku_code = :vendorSku",
+     "type": "text"
+    },
+    {
+     "label": "ItemType Name Contains",
+     "condition": "it.name like :itemName",
+     "type": "text"
+    },
+    {
+     "label": "ItemType Skucode",
+     "condition": "it.sku_code = :itemSku",
+     "type": "text"
+    },
+    {
+     "label": "Added in Date Range",
+     "condition": "vit.created &gt; :addedOnStart and vit.created &lt; :addedOnEnd",
+     "type": "daterange"
+    },
+    {
+     "label": "Updated Since (hours)",
+     "condition": null,
+     "type": null
+    }
+   ]
+  },
+  "Vendor Catalog": {
+   "label": "Vendor Catalog",
+   "anchor_table": "vendor_item_type",
+   "anchor_alias": "vit",
+   "from_join_clause": "from vendor_item_type vit\njoin item_type it on vit.item_type_id = it.id\njoin vendor v on vit.vendor_id = v.id\njoin party p on v.id = p.id",
+   "source": "export",
+   "export_name": "Vendor Catalog",
+   "fields": [
+    {
+     "label": "Product Code",
+     "expr": "it.sku_code"
+    },
+    {
+     "label": "Unit Price",
+     "expr": "vit.unit_price"
+    },
+    {
+     "label": "Vendor Code",
+     "expr": "p.code"
+    },
+    {
+     "label": "Vendor SkuCode",
+     "expr": "vit.vendor_sku_code"
+    },
+    {
+     "label": "Vendor Inventory",
+     "expr": "vit.vendor_inventory"
+    },
+    {
+     "label": "MRP",
+     "expr": "it.max_retail_price"
+    },
+    {
+     "label": "Lead Time (in Hours)",
+     "expr": "vit.lead_time"
+    },
+    {
+     "label": "Priority",
+     "expr": "vit.priority"
+    },
+    {
+     "label": "Enabled",
+     "expr": "vit.enabled"
+    },
+    {
+     "label": "Color",
+     "expr": "it.color"
+    },
+    {
+     "label": "Brand",
+     "expr": "it.brand"
+    },
+    {
+     "label": "Size",
+     "expr": "it.size"
+    },
+    {
+     "label": "Updated",
+     "expr": "vit.updated"
+    }
+   ],
+   "filters": [
+    {
+     "label": "Vendor SkuCode",
+     "condition": "vit.vendor_sku_code = :vendorSku",
+     "type": "text"
+    },
+    {
+     "label": "ItemType Name Contains",
+     "condition": "it.name like :itemName",
+     "type": "text"
+    },
+    {
+     "label": "ItemType Skucode",
+     "condition": "it.sku_code = :itemSku",
+     "type": "text"
+    },
+    {
+     "label": "Added in Date Range",
+     "condition": "vit.created &gt; :addedOnStart and vit.created &lt; :addedOnEnd",
+     "type": "daterange"
+    },
+    {
+     "label": "Updated Since",
+     "condition": null,
+     "type": null
+    }
+   ]
+  },
+  "Unwanted Purchase Orders": {
+   "label": "Unwanted Purchase Orders",
+   "anchor_table": "purchase_order_item",
+   "anchor_alias": "poi",
+   "from_join_clause": "from purchase_order_item poi",
+   "source": "export",
+   "export_name": "Unwanted Purchase Orders",
+   "fields": [
+    {
+     "label": "PO Code",
+     "expr": "po.code"
+    },
+    {
+     "label": "Created",
+     "expr": "poi.created"
+    },
+    {
+     "label": "Vendor SkuCode",
+     "expr": "poi.vendor_sku_code"
+    },
+    {
+     "label": "Order Quantity",
+     "expr": "poi.quantity"
+    },
+    {
+     "label": "Recieved Quantity",
+     "expr": "poi.received_quantity"
+    },
+    {
+     "label": "Rejected Quantity",
+     "expr": "poi.rejected_quantity"
+    },
+    {
+     "label": "PO Approved Date",
+     "expr": "po.approve_time"
+    },
+    {
+     "label": "Pending Quantity",
+     "expr": "poi.quantity - poi.received_quantity"
+    },
+    {
+     "label": "PO Ageing (Days)",
+     "expr": "DATEDIFF(now(), poi.created)"
+    },
+    {
+     "label": "% Pending",
+     "expr": "(poi.quantity - poi.received_quantity) * 100/poi.quantity"
+    },
+    {
+     "label": "% Rejection",
+     "expr": "rejected_quantity * 100/poi.quantity"
+    },
+    {
+     "label": "Unit Price",
+     "expr": "poi.unit_price"
+    },
+    {
+     "label": "Sub Total",
+     "expr": "poi.subtotal"
+    },
+    {
+     "label": "VAT",
+     "expr": "poi.vat"
+    },
+    {
+     "label": "CST",
+     "expr": "poi.cst"
+    },
+    {
+     "label": "Total",
+     "expr": "poi.total"
+    },
+    {
+     "label": "Purchase Order Status",
+     "expr": "po.status_code"
+    },
+    {
+     "label": "Updated",
+     "expr": "poi.updated"
+    }
+   ],
+   "filters": [
+    {
+     "label": "Purchase Order No.",
+     "condition": "po.code= :purchaseOrderCode",
+     "type": "text"
+    },
+    {
+     "label": "In Date Range",
+     "condition": "poi.created &gt; :addedOnStart and poi.created &lt; :addedOnEnd",
+     "type": "daterange"
+    },
+    {
+     "label": "Updated Since",
+     "condition": null,
+     "type": null
+    }
+   ]
+  },
+  "ASN": {
+   "label": "ASN report",
+   "anchor_table": "purchase_order",
+   "anchor_alias": "po",
+   "from_join_clause": "from purchase_order po\njoin advance_shipping_notice asn on asn.purchase_order_id = po.id\njoin advance_shipping_notice_item asni on asni.advance_shipping_notice_id = asn.id\njoin purchase_order_item poi on poi.id = asni.purchase_order_item_id\njoin item_type it on it.id = poi.item_type_id\njoin party p on po.vendor_id = p.id",
+   "source": "export",
+   "export_name": "ASN report",
+   "fields": [
+    {
+     "label": "ASN_NUMBER",
+     "expr": "asn.code"
+    },
+    {
+     "label": "PURCHASE_ORDER_NUMBER",
+     "expr": "po.code"
+    },
+    {
+     "label": "ASN_EXPECTED_DELIVERY_DATE",
+     "expr": "DATE_FORMAT(asn.expected_delivery_date,'%d-%m-%y')"
+    },
+    {
+     "label": "PO_CREATED ",
+     "expr": "po.created"
+    },
+    {
+     "label": "VENDOR_CODE ",
+     "expr": "p.code"
+    },
+    {
+     "label": "ASN_CREATED ",
+     "expr": "asn.created"
+    },
+    {
+     "label": "ASN_STATUS_CODE ",
+     "expr": "asn.status_code"
+    },
+    {
+     "label": "SKU_CODE ",
+     "expr": "it.sku_code"
+    },
+    {
+     "label": "ASN_QUANTITY ",
+     "expr": "asni.quantity"
+    },
+    {
+     "label": "PURCHASE_ORDER_ITEM_QUANTITY ",
+     "expr": "poi.quantity"
+    }
+   ],
+   "filters": [
+    {
+     "label": "Purchase Order code",
+     "condition": "po.code = :purchaseOrderCode",
+     "type": "text"
+    },
+    {
+     "label": "ASN code",
+     "condition": "asn.code = :asnCode",
+     "type": "text"
+    },
+    {
+     "label": " SKU_Code",
+     "condition": "it.sku_code = :skuCode",
+     "type": "text"
+    },
+    {
+     "label": "ASN Created In Date Range",
+     "condition": "asn.created &gt; :asnDateRangeStart and asn.created &lt; :asnDateRangeEnd",
+     "type": "daterange"
+    },
+    {
+     "label": "PO Created In Date Range",
+     "condition": "po.created &gt; :poDateRangeStart and po.created &lt; :poDateRangeEnd",
+     "type": "daterange"
+    }
+   ]
+  }
+ },
+ "Inventory Syncing": {
+  "Channel Item Type Sync": {
+   "label": "Channel Item Type Report",
+   "anchor_table": "channel_item_type",
+   "anchor_alias": "cit",
+   "from_join_clause": "from channel_item_type cit\nleft join item_type it on cit.item_type_id = it.id\nleft join channel_item_type_price citp on cit.id = citp.channel_item_type_id\nleft join channel ch on ch.id = cit.channel_id",
+   "source": "export",
+   "export_name": "Channel Item Type Report",
+   "fields": [
+    {
+     "label": "Channel Name",
+     "expr": "ch.name"
+    },
+    {
+     "label": "Product Name",
+     "expr": "cit.product_name"
+    },
+    {
+     "label": "Channel Product Id",
+     "expr": "cit.channel_product_id"
+    },
+    {
+     "label": "Seller Sku Code",
+     "expr": "cit.seller_sku_code"
+    },
+    {
+     "label": "Uniware Sku Code",
+     "expr": "it.sku_code"
+    },
+    {
+     "label": "Blocked Inventory",
+     "expr": "cit.blocked_inventory"
+    },
+    {
+     "label": "Disabled",
+     "expr": "cit.disabled"
+    },
+    {
+     "label": "Selling Price",
+     "expr": "citp.selling_price"
+    },
+    {
+     "label": "Max Retail Price",
+     "expr": "citp.mrp"
+    },
+    {
+     "label": "Currency Code",
+     "expr": "citp.currency_code"
+    },
+    {
+     "label": "Status Code",
+     "expr": "cit.status_code"
+    },
+    {
+     "label": "Next Inventory Update",
+     "expr": "cit.next_inventory_update"
+    },
+    {
+     "label": "Last Inventory Update",
+     "expr": "cit.last_inventory_update"
+    }
+   ],
+   "filters": [
+    {
+     "label": "Channels",
+     "condition": "ch.code in (:channelFilter)",
+     "type": "multiselect"
+    }
+   ]
+  },
+  "Channel Sync Status": {
+   "label": "Channel Sync Status",
+   "anchor_table": "channel",
+   "anchor_alias": "channel",
+   "from_join_clause": "FROM channel channel",
+   "source": "raw",
+   "export_name": null,
+   "fields": [
+    {
+     "label": "Source Code",
+     "expr": "channel.source_code"
+    },
+    {
+     "label": "Code",
+     "expr": "channel.code"
+    },
+    {
+     "label": "Enabled",
+     "expr": "channel.enabled"
+    },
+    {
+     "label": "Inventory Sync Status",
+     "expr": "channel.inventory_sync_status"
+    },
+    {
+     "label": "Catalog Sync Status",
+     "expr": "channel.catalog_sync_status"
+    },
+    {
+     "label": "Order Sync Status",
+     "expr": "channel.order_sync_status"
+    },
+    {
+     "label": "Pricing Sync Status",
+     "expr": "channel.pricing_sync_status"
+    },
+    {
+     "label": "Reconciliation Sync Status",
+     "expr": "channel.reconciliation_sync_status"
+    }
+   ],
+   "filters": []
+  }
+ },
+ "Facility": {
+  "Facility": {
+   "label": "Facility",
+   "anchor_table": "facility",
+   "anchor_alias": "f",
+   "from_join_clause": "from facility f\njoin party p on f.id = p.id\njoin party_address pa1 on pa1.party_id = p.id\njoin party_address_type pat1 on pat1.id = pa1.party_address_type_id and pat1.code = 'BILLING'\nleft join state s1 on (s1.iso2_code = pa1.state_code and s1.country_code = pa1.country_code)\njoin country c1 on c1.code = pa1.country_code\njoin party_address pa2 on pa2.party_id = p.id\njoin party_address_type pat2 on pat2.id = pa2.party_address_type_id and pat2.code = 'SHIPPING'\nleft join state s2 on (s2.iso2_code = pa2.state_code and s2.country_code = pa2.country_code)\njoin country c2 on c2.code = pa2.country_code\nLEFT JOIN gst_einvoice_seller_credentials gesc ON p.id = gesc.party_id",
+   "source": "export",
+   "export_name": "Facility",
+   "fields": [
+    {
+     "label": "Facility Code",
+     "expr": "p.code"
+    },
+    {
+     "label": "Facility Name",
+     "expr": "p.name"
+    },
+    {
+     "label": "Facility Display Name",
+     "expr": "f.display_name"
+    },
+    {
+     "label": "Facility Type",
+     "expr": "f.type"
+    },
+    {
+     "label": "Facility Operational Type",
+     "expr": "f.operational_type"
+    },
+    {
+     "label": "Facility Created On",
+     "expr": "p.created"
+    },
+    {
+     "label": "TIN No.",
+     "expr": "p.tin"
+    },
+    {
+     "label": "Billing Address",
+     "expr": "concat(pa1.address_line1, pa1.address_line2)"
+    },
+    {
+     "label": "Billing City",
+     "expr": "pa1.city"
+    },
+    {
+     "label": "Billing Pincode",
+     "expr": "pa1.pincode"
+    },
+    {
+     "label": "Billing Latitude",
+     "expr": "pa1.latitude"
+    },
+    {
+     "label": "Billing Longitude",
+     "expr": "pa1.longitude"
+    },
+    {
+     "label": "Billing State",
+     "expr": "s1.name"
+    },
+    {
+     "label": "Billing Country",
+     "expr": "c1.name"
+    },
+    {
+     "label": "Billing Phone",
+     "expr": "pa1.phone"
+    },
+    {
+     "label": "Shipping Address",
+     "expr": "concat(pa2.address_line1, pa2.address_line2)"
+    },
+    {
+     "label": "Shipping City",
+     "expr": "pa2.city"
+    },
+    {
+     "label": "Shipping Pincode",
+     "expr": "pa2.pincode"
+    },
+    {
+     "label": "Shipping Latitude",
+     "expr": "pa2.latitude"
+    },
+    {
+     "label": "Shipping Longitude",
+     "expr": "pa2.longitude"
+    },
+    {
+     "label": "Shipping State",
+     "expr": "s2.name"
+    },
+    {
+     "label": "Shipping Country",
+     "expr": "c2.name"
+    },
+    {
+     "label": "Shipping Phone",
+     "expr": "pa2.phone"
+    },
+    {
+     "label": "Daily Max Order Processing Capacity Enabled",
+     "expr": "f.max_order_capacity_enabled"
+    },
+    {
+     "label": "Daily Order Items Processing Capacity",
+     "expr": "f.max_order_capacity"
+    }
+   ],
+   "filters": [
+    {
+     "label": "Updated in Date Range",
+     "condition": "p.updated &gt; :updatedOnStart and p.updated &lt; :updatedOnEnd",
+     "type": "daterange"
+    },
+    {
+     "label": "Updated Since (Hours) - Deprecated",
+     "condition": "p.updated &gt; DATE_SUB(:exportExecutionTime, INTERVAL :updatedSince HOUR)",
+     "type": "text"
+    },
+    {
+     "label": "Created Date Range",
+     "condition": "p.created  &gt; :addedOnStart and p.created &lt; :addedOnEnd",
+     "type": "daterange"
+    }
+   ]
+  },
+  "Facility Alias": {
+   "label": "Facility Alias",
+   "anchor_table": "facility_alias",
+   "anchor_alias": "fa",
+   "from_join_clause": "from facility_alias fa\nleft join facility f on f.`id` = fa.`facility_id`\nleft join party p on p.`id` = f.`id`",
+   "source": "export",
+   "export_name": "Facility Alias",
+   "fields": [
+    {
+     "label": "Facility Code",
+     "expr": "p.code"
+    },
+    {
+     "label": "Facility Name",
+     "expr": "f.display_name"
+    },
+    {
+     "label": "Party Name",
+     "expr": "p.name"
+    },
+    {
+     "label": "Channel",
+     "expr": "case when fa.source_type = 'CHANNEL' then fa.code else '' end"
+    },
+    {
+     "label": "Shipping Provider",
+     "expr": "case when fa.source_type = 'SHIPPING_PROVIDER' then fa.code else '' end"
+    },
+    {
+     "label": "Provider Type",
+     "expr": "fa.source_type"
+    },
+    {
+     "label": "Alias Name",
+     "expr": "fa.alias_name"
+    }
+   ],
+   "filters": [
+    {
+     "label": "Facility Codes",
+     "condition": "p.code in (:facilityCodeFilter)",
+     "type": "multiselect"
+    },
+    {
+     "label": "Channels",
+     "condition": "fa.code in (:channelFilter)",
+     "type": "multiselect"
+    },
+    {
+     "label": "Shipping Providers",
+     "condition": "fa.code in (:shippingProviderFilter)",
+     "type": "multiselect"
+    }
+   ]
+  },
+  "Facility Time Slot": {
+   "label": "Facility Time Slot",
+   "anchor_table": "facility_time_slot",
+   "anchor_alias": "ft",
+   "from_join_clause": "from facility_time_slot ft\nleft join facility f on f.id = ft.facility_id\nleft join party p on p.id = ft.facility_id",
+   "source": "export",
+   "export_name": "Facility Time Slot",
+   "fields": [
+    {
+     "label": "Facility Code",
+     "expr": "p.code"
+    },
+    {
+     "label": "Facility Slot Display Name",
+     "expr": "ft.display_name"
+    },
+    {
+     "label": "Facility Slot Start Time as HH:mm:ss",
+     "expr": "ft.start_time"
+    },
+    {
+     "label": "Facility Slot End Time as HH:mm:ss",
+     "expr": "ft.end_time"
+    }
+   ],
+   "filters": [
+    {
+     "label": "Facility Filter",
+     "condition": "p.id in :facilityFilter",
+     "type": "multiselect"
+    }
+   ]
+  },
+  "Facility Allocation Rules": {
+   "label": "Facility Allocation Rules",
+   "anchor_table": "facility_allocation_rule",
+   "anchor_alias": "fa",
+   "from_join_clause": "FROM facility_allocation_rule fa\nleft join party p on p.id = fa.facility_id\nleft join tenant t on t.id = fa.tenant_id",
+   "source": "export",
+   "export_name": "Facility Allocation Rules",
+   "fields": [
+    {
+     "label": "Rule name",
+     "expr": "fa.name"
+    },
+    {
+     "label": "Expression",
+     "expr": "fa.condition_expression"
+    },
+    {
+     "label": "Facility Code",
+     "expr": "p.code"
+    },
+    {
+     "label": "Preference",
+     "expr": "fa.preference"
+    },
+    {
+     "label": "Enabled",
+     "expr": "fa.enabled"
+    },
+    {
+     "label": "Tenant",
+     "expr": "t.code"
+    }
+   ],
+   "filters": []
+  },
+  "Facility Enable": {
+   "label": "Facility Enable",
+   "anchor_table": "facility",
+   "anchor_alias": "f",
+   "from_join_clause": "from facility f\njoin party p on f.id = p.id\njoin party_address pa1 on pa1.party_id = p.id\njoin party_address_type pat1 on pat1.id = pa1.party_address_type_id and pat1.code = 'BILLING'\nleft join state s1 on (s1.iso2_code = pa1.state_code and s1.country_code = pa1.country_code)\njoin country c1 on c1.code = pa1.country_code\njoin party_address pa2 on pa2.party_id = p.id\njoin party_address_type pat2 on pat2.id = pa2.party_address_type_id and pat2.code = 'SHIPPING'\nleft join state s2 on (s2.iso2_code = pa2.state_code and s2.country_code = pa2.country_code)\njoin country c2 on c2.code = pa2.country_code",
+   "source": "export",
+   "export_name": "Facility Enable",
+   "fields": [
+    {
+     "label": "Facility Code",
+     "expr": "p.code"
+    },
+    {
+     "label": "Facility Name",
+     "expr": "p.name"
+    },
+    {
+     "label": "Facility Display Name",
+     "expr": "f.display_name"
+    },
+    {
+     "label": "Facility Type",
+     "expr": "f.type"
+    },
+    {
+     "label": "Facility Created On",
+     "expr": "p.created"
+    },
+    {
+     "label": "TIN No.",
+     "expr": "p.tin"
+    },
+    {
+     "label": "Billing Address",
+     "expr": "concat(pa1.address_line1, pa1.address_line2)"
+    },
+    {
+     "label": "Billing City",
+     "expr": "pa1.city"
+    },
+    {
+     "label": "Billing Pincode",
+     "expr": "pa1.pincode"
+    },
+    {
+     "label": "Billing State",
+     "expr": "s1.name"
+    },
+    {
+     "label": "Billing Country",
+     "expr": "c1.name"
+    },
+    {
+     "label": "Billing Phone",
+     "expr": "pa1.phone"
+    },
+    {
+     "label": "Shipping Address",
+     "expr": "concat(pa2.address_line1, pa2.address_line2)"
+    },
+    {
+     "label": "Shipping City",
+     "expr": "pa2.city"
+    },
+    {
+     "label": "Shipping Pincode",
+     "expr": "pa2.pincode"
+    },
+    {
+     "label": "Shipping State",
+     "expr": "s2.name"
+    },
+    {
+     "label": "Shipping Country",
+     "expr": "c2.name"
+    },
+    {
+     "label": "Shipping Phone",
+     "expr": "pa2.phone"
+    },
+    {
+     "label": "Daily Max Order Processing Capacity Enabled",
+     "expr": "f.max_order_capacity_enabled"
+    },
+    {
+     "label": "Daily Order Items Processing Capacity",
+     "expr": "f.max_order_capacity"
+    },
+    {
+     "label": "Enabled",
+     "expr": "p.enabled"
+    }
+   ],
+   "filters": [
+    {
+     "label": "Updated in Date Range",
+     "condition": "p.updated &gt; :updatedOnStart and p.updated &lt; :updatedOnEnd",
+     "type": "daterange"
+    },
+    {
+     "label": "Updated Since (Hours) - Deprecated",
+     "condition": null,
+     "type": null
+    },
+    {
+     "label": "Created Date Range",
+     "condition": "p.created  &gt; :addedOnStart and p.created &lt; :addedOnEnd",
+     "type": "daterange"
+    }
+   ]
+  }
+ },
+ "SKU & Category": {
+  "Item Master": {
+   "label": "Item Master",
+   "anchor_table": "item_type",
+   "anchor_alias": "i",
+   "from_join_clause": "from item_type i\nleft join batch_group bg on i.batch_group_id = bg.id\nleft join bundle b on (i.id = b.item_type_id)\nleft join bundle_item_type bit on (bit.bundle_id = b.id)\nleft join item_type bi on (bit.item_type_id = bi.id)\nleft join tax_type tt on i.tax_type_id = tt.id\nleft join tax_type gst on gst.id = i.gst_tax_type_id\njoin category c on i.category_id = c.id",
+   "source": "export",
+   "export_name": "Item Master",
+   "fields": [
+    {
+     "label": "Category Code",
+     "expr": "c.code"
+    },
+    {
+     "label": "Product Code",
+     "expr": "i.sku_code"
+    },
+    {
+     "label": "Name",
+     "expr": "i.name"
+    },
+    {
+     "label": "Description",
+     "expr": "i.description"
+    },
+    {
+     "label": "Scan Identifier",
+     "expr": "i.scan_identifier"
+    },
+    {
+     "label": "Requires Customization",
+     "expr": "i.requires_customization"
+    },
+    {
+     "label": "Length (mm)",
+     "expr": "i.length"
+    },
+    {
+     "label": "Width (mm)",
+     "expr": "i.width"
+    },
+    {
+     "label": "Height (mm)",
+     "expr": "i.height"
+    },
+    {
+     "label": "Weight (gms)",
+     "expr": "i.weight"
+    },
+    {
+     "label": "EAN",
+     "expr": "i.ean"
+    },
+    {
+     "label": "UPC",
+     "expr": "i.upc"
+    },
+    {
+     "label": "ISBN",
+     "expr": "i.isbn"
+    },
+    {
+     "label": "Color",
+     "expr": "i.color"
+    },
+    {
+     "label": "Size",
+     "expr": "i.size"
+    },
+    {
+     "label": "Brand",
+     "expr": "i.brand"
+    },
+    {
+     "label": "Item Detail Fields",
+     "expr": "i.item_detail_fields"
+    },
+    {
+     "label": "Tags",
+     "expr": "i.tags"
+    },
+    {
+     "label": "Image Url",
+     "expr": "i.image_url"
+    },
+    {
+     "label": "Product Page Url",
+     "expr": "i.product_page_url"
+    },
+    {
+     "label": "Tax Type Code",
+     "expr": "tt.code"
+    },
+    {
+     "label": "GST Tax Type Code",
+     "expr": "gst.code"
+    },
+    {
+     "label": "Base Price",
+     "expr": "i.base_price"
+    },
+    {
+     "label": "Cost Price",
+     "expr": "i.cost_price"
+    },
+    {
+     "label": "TAT",
+     "expr": "i.tat"
+    }
+   ],
+   "filters": [
+    {
+     "label": "In Category",
+     "condition": "c.id in (:categoryIds)",
+     "type": "multiselect"
+    },
+    {
+     "label": "Item Name Contains",
+     "condition": "i.name like :name",
+     "type": "text"
+    },
+    {
+     "label": "Enabled",
+     "condition": "i.enabled = :enabledFilter",
+     "type": "boolean"
+    },
+    {
+     "label": "Added in Date Range",
+     "condition": "i.created &gt; :dateRangeStart and i.created &lt; :dateRangeEnd",
+     "type": "daterange"
+    },
+    {
+     "label": "Updated Since (hours)",
+     "condition": null,
+     "type": null
+    }
+   ]
+  },
+  "Item Barcodes": {
+   "label": "Item Barcodes",
+   "anchor_table": "item",
+   "anchor_alias": "i",
+   "from_join_clause": "from item i\njoin item_type it on i.item_type_id=it.id\njoin category c on it.category_id=c.id\nleft join inflow_receipt_item iri on iri.id=i.inflow_receipt_item_id\nleft join inflow_receipt ir on iri.inflow_receipt_id=ir.id\nleft join shelf s on s.id = i.shelf_id\nleft join purchase_order_item poi on poi.id = iri.purchase_order_item_id",
+   "source": "export",
+   "export_name": "Item Barcodes",
+   "fields": [
+    {
+     "label": "Item Code",
+     "expr": "i.code"
+    },
+    {
+     "label": "Item Created On",
+     "expr": "i.created"
+    },
+    {
+     "label": "Item Updated On",
+     "expr": "i.updated"
+    },
+    {
+     "label": "Item Status",
+     "expr": "i.status_code"
+    },
+    {
+     "label": "GRN Number",
+     "expr": "ir.code"
+    },
+    {
+     "label": "Shelf Code",
+     "expr": "s.code"
+    },
+    {
+     "label": "Category",
+     "expr": "c.name"
+    },
+    {
+     "label": "Item Type Name",
+     "expr": "it.name"
+    },
+    {
+     "label": "Brand",
+     "expr": "it.brand"
+    },
+    {
+     "label": "Colour",
+     "expr": "it.color"
+    },
+    {
+     "label": "Size",
+     "expr": "it.size"
+    },
+    {
+     "label": "Item Type skuCode",
+     "expr": "it.sku_code"
+    },
+    {
+     "label": "Vendor skuCode",
+     "expr": "poi.vendor_sku_code"
+    },
+    {
+     "label": "Expires On",
+     "expr": "iri.expiry"
+    },
+    {
+     "label": "Unit price without tax",
+     "expr": "iri.unit_price"
+    },
+    {
+     "label": "Unit price with tax",
+     "expr": "(iri.total/iri.quantity)"
+    },
+    {
+     "label": "Custom Field Values",
+     "expr": "i.item_details"
+    },
+    {
+     "label": "Days in warehouse",
+     "expr": "DATEDIFF(now(),i.created)"
+    },
+    {
+     "label": "Facility Id",
+     "expr": "i.facility_id"
+    },
+    {
+     "label": "Inventory type",
+     "expr": "i.inventory_type"
+    }
+   ],
+   "filters": [
+    {
+     "label": "Item Name Contains",
+     "condition": "it.name like :name",
+     "type": "text"
+    },
+    {
+     "label": "Item SkuCode",
+     "condition": "it.sku_code= :itemSkuCode",
+     "type": "text"
+    },
+    {
+     "label": "Item Status",
+     "condition": "i.status_code in (:statusItem)",
+     "type": "multiselect"
+    },
+    {
+     "label": "Created Date Range",
+     "condition": "i.created  &gt; :addedOnStart and i.created &lt; :addedOnEnd",
+     "type": "daterange"
+    },
+    {
+     "label": "Facility Filter",
+     "condition": "(i.facility_id = :facilityId)",
+     "type": "text"
+    },
+    {
+     "label": "Inventory Type",
+     "condition": "i.inventory_type in (:inventoryType)",
+     "type": "multiselect"
+    }
+   ]
+  },
+  "Category": {
+   "label": "Category",
+   "anchor_table": "category",
+   "anchor_alias": "c",
+   "from_join_clause": "from category c\nleft join tax_type gst on c.gst_tax_type_id = gst.id\nleft join tax_type tt on c.tax_type_id = tt.id",
+   "source": "export",
+   "export_name": "Category",
+   "fields": [
+    {
+     "label": "Category Code",
+     "expr": "c.code"
+    },
+    {
+     "label": "Category Name",
+     "expr": "c.name"
+    },
+    {
+     "label": "HSN Code",
+     "expr": "c.hsn_code"
+    },
+    {
+     "label": "GST Tax Type",
+     "expr": "gst.code"
+    },
+    {
+     "label": "Tax Type",
+     "expr": "tt.code"
+    },
+    {
+     "label": "Created",
+     "expr": "c.created"
+    },
+    {
+     "label": "Updated",
+     "expr": "c.updated"
+    },
+    {
+     "label": "Determine Expiry From",
+     "expr": "c.determine_expiry_from"
+    },
+    {
+     "label": "GRN expiry tolerance",
+     "expr": "c.grn_expiry_tolerance"
+    },
+    {
+     "label": "Dispatch expiry tolerance",
+     "expr": "c.dispatch_expiry_tolerance"
+    },
+    {
+     "label": "Return expiry tolerance",
+     "expr": "c.return_expiry_tolerance"
+    },
+    {
+     "label": "Expirable",
+     "expr": "c.expirable"
+    },
+    {
+     "label": "Shelf Life",
+     "expr": "c.shelf_life"
+    },
+    {
+     "label": "Tolerance In Value",
+     "expr": "if(c.tolerance_in='ABSOLUTE','DAYS',c.tolerance_in)"
+    }
+   ],
+   "filters": [
+    {
+     "label": "Category Name Contains",
+     "condition": "c.name like :name",
+     "type": "text"
+    },
+    {
+     "label": "Updated Since",
+     "condition": null,
+     "type": null
+    }
+   ]
+  },
+  "Category Section Mapping": {
+   "label": "Category Section Mapping",
+   "anchor_table": "category_section_mapping",
+   "anchor_alias": "csm",
+   "from_join_clause": "from category_section_mapping csm\nleft join category c on csm.category_id = c.id\nleft join section s on csm.section_id = s.id",
+   "source": "export",
+   "export_name": "Category Section Mapping",
+   "fields": [
+    {
+     "label": "Category Code",
+     "expr": "c.code"
+    },
+    {
+     "label": "Section Code",
+     "expr": "s.code"
+    },
+    {
+     "label": "Enabled",
+     "expr": "csm.enabled"
+    }
+   ],
+   "filters": []
+  },
+  "Dropship Facility Item Master": {
+   "label": "Dropship Facility Item Master",
+   "anchor_table": "item_type",
+   "anchor_alias": "it",
+   "from_join_clause": "from item_type it\njoin facility_item_type fit on fit.item_type_id = it.id\njoin category c on c.id = it.category_id\njoin facility f on f.id = fit.facility_id\njoin party p on p.id = f.id",
+   "source": "export",
+   "export_name": "Dropship Facility Item Master",
+   "fields": [
+    {
+     "label": "Item Type Name",
+     "expr": "it.name"
+    },
+    {
+     "label": "Product Code",
+     "expr": "it.sku_code"
+    },
+    {
+     "label": "Color",
+     "expr": "it.color"
+    },
+    {
+     "label": "Size",
+     "expr": "it.size"
+    },
+    {
+     "label": "Brand",
+     "expr": "it.brand"
+    },
+    {
+     "label": "Facility SkuCode",
+     "expr": "fit.facility_sku_code"
+    },
+    {
+     "label": "Faciity Code",
+     "expr": "p.code"
+    },
+    {
+     "label": "Faciity Type",
+     "expr": "f.type"
+    },
+    {
+     "label": "Facility Display Name",
+     "expr": "f.display_name"
+    },
+    {
+     "label": "Category",
+     "expr": "c.name"
+    },
+    {
+     "label": "MRP.",
+     "expr": "it.max_retail_price"
+    },
+    {
+     "label": "Commission",
+     "expr": "fit.commission"
+    },
+    {
+     "label": "Shipping Charges",
+     "expr": "fit.shipping_charges"
+    },
+    {
+     "label": "Created On",
+     "expr": "DATE_FORMAT(it.created,'%m-%d-%Y')"
+    },
+    {
+     "label": "Inventory",
+     "expr": "fit.inventory"
+    },
+    {
+     "label": "Priority",
+     "expr": "fit.priority"
+    },
+    {
+     "label": "Enabled",
+     "expr": "fit.enabled"
+    }
+   ],
+   "filters": [
+    {
+     "label": "Item Name Contains",
+     "condition": "it.name like :name",
+     "type": "text"
+    },
+    {
+     "label": "Item SkuCode",
+     "condition": "it.sku_code= :itemSkuCode",
+     "type": "text"
+    }
+   ]
+  },
+  "Tax Type Configuration": {
+   "label": "Tax Type Configuration",
+   "anchor_table": "tax_type",
+   "anchor_alias": "tt",
+   "from_join_clause": "from tax_type tt\njoin tax_type_configuration ttc on tt.id = ttc.tax_type_id\njoin tax_type_configuration_range ttcr on ttc.id=ttcr.tax_type_configuration_id",
+   "source": "export",
+   "export_name": "Tax Type Configuration",
+   "fields": [
+    {
+     "label": "Tax Type Code",
+     "expr": "tt.code"
+    },
+    {
+     "label": "State Code",
+     "expr": "ttc.state_code"
+    },
+    {
+     "label": "VAT",
+     "expr": "ttcr.vat"
+    },
+    {
+     "label": "CST",
+     "expr": "ttcr.cst"
+    },
+    {
+     "label": "CGST",
+     "expr": "ttcr.central_gst"
+    },
+    {
+     "label": "SGST",
+     "expr": "ttcr.state_gst"
+    },
+    {
+     "label": "UTGST",
+     "expr": "ttcr.union_territory_gst"
+    },
+    {
+     "label": "IGST",
+     "expr": "ttcr.integrated_gst"
+    },
+    {
+     "label": "Compensation Cess",
+     "expr": "ttcr.compensation_cess"
+    },
+    {
+     "label": "GST",
+     "expr": "tt.gst"
+    },
+    {
+     "label": "CST with CForm",
+     "expr": "ttcr.cst_formc"
+    },
+    {
+     "label": "Additional Tax",
+     "expr": "ttcr.additional_tax"
+    },
+    {
+     "label": "Start Price",
+     "expr": "ttcr.start_price"
+    },
+    {
+     "label": "End Price",
+     "expr": "ttcr.end_price"
+    }
+   ],
+   "filters": [
+    {
+     "label": "State Code",
+     "condition": "ttc.state_code = :stateCodeFilter",
+     "type": "select"
+    },
+    {
+     "label": "GST Tax Type",
+     "condition": "tt.gst = :gstTaxTypeFilter",
+     "type": "boolean"
+    }
+   ]
+  }
+ },
+ "Users": {
+  "Users": {
+   "label": "Users",
+   "anchor_table": "user",
+   "anchor_alias": "u",
+   "from_join_clause": "from user u\njoin user_role ur on ur.user_id = u.id\nleft join role r on r.id = ur.role_id\nleft join facility f on f.id = ur.facility_id",
+   "source": "export",
+   "export_name": "Users",
+   "fields": [
+    {
+     "label": "Name",
+     "expr": "u.name"
+    },
+    {
+     "label": "Facility",
+     "expr": "f.display_name"
+    },
+    {
+     "label": "User Name",
+     "expr": "u.username"
+    },
+    {
+     "label": "Role",
+     "expr": "r.name"
+    },
+    {
+     "label": "Email",
+     "expr": "u.email"
+    },
+    {
+     "label": "Gender",
+     "expr": "u.gender"
+    },
+    {
+     "label": "Mobile",
+     "expr": "u.mobile"
+    },
+    {
+     "label": "Enabled",
+     "expr": "case when(u.enabled = 1) then 'Yes' else 'No' end"
+    },
+    {
+     "label": "Blocked",
+     "expr": "case when(u.blocked = 1) then 'Yes' else 'No' end"
+    },
+    {
+     "label": "Created",
+     "expr": "u.created"
+    },
+    {
+     "label": "Updated At",
+     "expr": "u.updated"
+    }
+   ],
+   "filters": [
+    {
+     "label": "Created in Date Range",
+     "condition": "u.created &gt; :addedOnStart and u.created &lt; :addedOnEnd",
+     "type": "daterange"
+    },
+    {
+     "label": "User Name Contains",
+     "condition": "u.username like :username",
+     "type": "text"
+    },
+    {
+     "label": "Enabled",
+     "condition": "u.enabled = :enable",
+     "type": "boolean"
+    },
+    {
+     "label": "Blocked",
+     "condition": "u.blocked = :block",
+     "type": "boolean"
+    }
+   ]
+  },
+  "Users Detailed View": {
+   "label": "Users detailed view",
+   "anchor_table": "user",
+   "anchor_alias": "u",
+   "from_join_clause": "from user u\njoin tenant t on t.id = u.tenant_id",
+   "source": "export",
+   "export_name": "Users detailed view",
+   "fields": [
+    {
+     "label": "Name",
+     "expr": "u.name"
+    },
+    {
+     "label": "User Name",
+     "expr": "u.username"
+    },
+    {
+     "label": "Email",
+     "expr": "u.email"
+    },
+    {
+     "label": "Phone",
+     "expr": "u.mobile"
+    },
+    {
+     "label": "Added On",
+     "expr": "u.created"
+    },
+    {
+     "label": "Last Login",
+     "expr": "u.last_login_time"
+    },
+    {
+     "label": "Last Logged From",
+     "expr": "u.last_accessed_from"
+    },
+    {
+     "label": "Enabled",
+     "expr": "(case when u.enabled = 1 then 'Enabled' else 'Disabled' end)"
+    },
+    {
+     "label": "Action",
+     "expr": "''"
+    }
+   ],
+   "filters": [
+    {
+     "label": "Name is",
+     "condition": "u.name like :nameFilter",
+     "type": "text"
+    },
+    {
+     "label": "Username is",
+     "condition": "u.username like :userNameFilter",
+     "type": "text"
+    },
+    {
+     "label": "User email is",
+     "condition": "u.email like :userEmailFilter",
+     "type": "text"
+    },
+    {
+     "label": "User mobile is",
+     "condition": "u.mobile like :userMobileFilter",
+     "type": "text"
+    },
+    {
+     "label": "Added in Date Range",
+     "condition": "u.created &gt; :addDateRangeFilterStart and u.created &lt; :addDateRangeFilterEnd",
+     "type": "daterange"
+    },
+    {
+     "label": "Last Login in Date Range",
+     "condition": "u.last_login_time &gt; :lastLoginOnDateRangeFilterStart and u.last_login_time &lt; :lastLoginOnDateRangeFilterEnd",
+     "type": "daterange"
+    },
+    {
+     "label": "Enabled",
+     "condition": "u.enabled in (:userEnabledFilter)",
+     "type": "multiselect"
+    }
+   ]
+  },
+  "User Comments": {
+   "label": "User Comments",
+   "anchor_table": "user_comment",
+   "anchor_alias": "uc",
+   "from_join_clause": "FROM user_comment uc",
+   "source": "export",
+   "export_name": "User Comments",
+   "fields": [
+    {
+     "label": "Username",
+     "expr": "u.username"
+    },
+    {
+     "label": "Entity Reference",
+     "expr": "uc.reference_identifier"
+    },
+    {
+     "label": "Comment",
+     "expr": "uc.comment"
+    },
+    {
+     "label": "Created",
+     "expr": "uc.created"
+    }
+   ],
+   "filters": [
+    {
+     "label": "Entity",
+     "condition": "uc.reference_identifier like :entity",
+     "type": "select"
+    },
+    {
+     "label": "Created Since",
+     "condition": null,
+     "type": null
+    },
+    {
+     "label": "Created Date Range",
+     "condition": "uc.updated  &gt; :addedOnStart and uc.updated &lt; :addedOnEnd",
+     "type": "daterange"
+    }
+   ]
+  },
+  "Role": {
+   "label": "Role",
+   "anchor_table": "role",
+   "anchor_alias": "role",
+   "from_join_clause": "FROM role role",
+   "source": "raw",
+   "export_name": null,
+   "fields": [
+    {
+     "label": "Id",
+     "expr": "role.id"
+    },
+    {
+     "label": "Tenant Id",
+     "expr": "role.tenant_id"
+    },
+    {
+     "label": "Code",
+     "expr": "role.code"
+    },
+    {
+     "label": "Name",
+     "expr": "role.name"
+    },
+    {
+     "label": "Level",
+     "expr": "role.level"
+    },
+    {
+     "label": "Description",
+     "expr": "role.description"
+    },
+    {
+     "label": "Hidden",
+     "expr": "role.hidden"
+    },
+    {
+     "label": "Created",
+     "expr": "role.created"
+    },
+    {
+     "label": "Updated",
+     "expr": "role.updated"
+    }
+   ],
+   "filters": []
+  },
+  "Access Resource": {
+   "label": "Access Resource",
+   "anchor_table": "access_resource",
+   "anchor_alias": "access_resource",
+   "from_join_clause": "FROM access_resource access_resource",
+   "source": "raw",
+   "export_name": null,
+   "fields": [
+    {
+     "label": "Id",
+     "expr": "access_resource.id"
+    },
+    {
+     "label": "Name",
+     "expr": "access_resource.name"
+    },
+    {
+     "label": "Access Resource Group Id",
+     "expr": "access_resource.access_resource_group_id"
+    },
+    {
+     "label": "Level",
+     "expr": "access_resource.level"
+    },
+    {
+     "label": "Created",
+     "expr": "access_resource.created"
+    },
+    {
+     "label": "Updated",
+     "expr": "access_resource.updated"
+    }
+   ],
+   "filters": []
+  },
+  "Role -> Access Resource Mapping": {
+   "label": "Role Access Resource Mapping",
+   "anchor_table": "role_access_resource",
+   "anchor_alias": "role_access_resource",
+   "from_join_clause": "FROM role_access_resource role_access_resource",
+   "source": "raw",
+   "export_name": null,
+   "fields": [
+    {
+     "label": "Id",
+     "expr": "role_access_resource.id"
+    },
+    {
+     "label": "Role Id",
+     "expr": "role_access_resource.role_id"
+    },
+    {
+     "label": "Access Resource Name",
+     "expr": "role_access_resource.access_resource_name"
+    },
+    {
+     "label": "Enabled",
+     "expr": "role_access_resource.enabled"
+    },
+    {
+     "label": "Created",
+     "expr": "role_access_resource.created"
+    },
+    {
+     "label": "Updated",
+     "expr": "role_access_resource.updated"
+    }
+   ],
+   "filters": []
+  }
+ },
+ "Putaway": {
+  "Putaway": {
+   "label": "Putaway",
+   "anchor_table": "putaway_item",
+   "anchor_alias": "pui",
+   "from_join_clause": "from putaway_item pui\njoin putaway pu on pui.putaway_id=pu.id\nleft join batch b on pui.batch_id=b.id\nleft join shelf s on pui.shelf_id = s.id\njoin item_type it on it.id=pui.item_type_id\njoin user u on u.id=pu.user_id\njoin category c on c.id=it.category_id",
+   "source": "export",
+   "export_name": "Putaway",
+   "fields": [
+    {
+     "label": "Putaway Item Id",
+     "expr": "pui.id"
+    },
+    {
+     "label": "Shelf Code",
+     "expr": "s.code"
+    },
+    {
+     "label": "Putaway Code",
+     "expr": "pu.code"
+    },
+    {
+     "label": "Created",
+     "expr": "pui.created"
+    },
+    {
+     "label": "Created By",
+     "expr": "u.username"
+    },
+    {
+     "label": "Type",
+     "expr": "pu.type"
+    },
+    {
+     "label": "Item Type skuCode",
+     "expr": "it.sku_code"
+    },
+    {
+     "label": "Name",
+     "expr": "it.name"
+    },
+    {
+     "label": "Category",
+     "expr": "c.name"
+    },
+    {
+     "label": "Putaway Quantity",
+     "expr": "pui.putaway_quantity"
+    },
+    {
+     "label": "Status Code",
+     "expr": "pui.status_code"
+    },
+    {
+     "label": "Updated",
+     "expr": "pui.updated"
+    },
+    {
+     "label": "Inventory Type",
+     "expr": "pui.type"
+    },
+    {
+     "label": "Batch Code",
+     "expr": "b.code"
+    }
+   ],
+   "filters": [
+    {
+     "label": "In Category",
+     "condition": "c.id in (:categoryIds)",
+     "type": "multiselect"
+    },
+    {
+     "label": "Item Name Contains",
+     "condition": "it.name like :name",
+     "type": "text"
+    },
+    {
+     "label": "Item SkuCode",
+     "condition": "it.sku_code= :itemSkuCode",
+     "type": "text"
+    },
+    {
+     "label": "Batch Code Contains",
+     "condition": "b.code= :batchCode",
+     "type": "text"
+    },
+    {
+     "label": "Created in Date Range",
+     "condition": "pu.created &gt; :addedOnStart and pu.created &lt; :addedOnEnd",
+     "type": "daterange"
+    },
+    {
+     "label": "Updated Since (hours)",
+     "condition": null,
+     "type": null
+    }
+   ]
+  },
+  "GRN/Gatepass to Putaway": {
+   "label": "GRN/Gatepass to Putaway",
+   "anchor_table": "putaway_item",
+   "anchor_alias": "pui",
+   "from_join_clause": "from putaway_item pui\njoin putaway pu on pui.putaway_id = pu.id\nleft join batch b on pui.batch_id = b.id\nleft join shelf s on pui.shelf_id = s.id\njoin item_type it on it.id = pui.item_type_id\njoin user u on u.id = pu.user_id\njoin category c on c.id = it.category_id\nleft join putaway_entity_mapping pem on pem.putaway_id = pu.id\nleft join inflow_receipt ir on ir.id = pem.inflow_receipt_id\nleft join outbound_gate_pass ogp on ogp.id = pem.outbound_gate_pass_id",
+   "source": "export",
+   "export_name": "GRN/Gatepass to Putaway",
+   "fields": [
+    {
+     "label": "Putaway Item Id",
+     "expr": "pui.id"
+    },
+    {
+     "label": "Putaway Code",
+     "expr": "pu.code"
+    },
+    {
+     "label": "Type",
+     "expr": "pu.type"
+    },
+    {
+     "label": "Product Name",
+     "expr": "it.name"
+    },
+    {
+     "label": "SKU Code",
+     "expr": "it.sku_code"
+    },
+    {
+     "label": "Status Code",
+     "expr": "pui.status_code"
+    },
+    {
+     "label": "Quantity",
+     "expr": "CASE \n            WHEN pui.status_code = 'COMPLETE' THEN pui.putaway_quantity \n            WHEN pui.status_code = 'PENDING' THEN pui.quantity - pui.putaway_quantity \n            ELSE 0 \n        END"
+    },
+    {
+     "label": "Shelf",
+     "expr": "s.code"
+    },
+    {
+     "label": "Inventory Type",
+     "expr": "pui.type"
+    },
+    {
+     "label": "QC Comment",
+     "expr": "pui.putaway_qc_comment"
+    },
+    {
+     "label": "Created By",
+     "expr": "u.username"
+    },
+    {
+     "label": "Created",
+     "expr": "pui.created"
+    },
+    {
+     "label": "Last Updated",
+     "expr": "pui.updated"
+    },
+    {
+     "label": "GRN Number",
+     "expr": "ir.code"
+    },
+    {
+     "label": "Gatepass Code",
+     "expr": "ogp.code"
+    }
+   ],
+   "filters": [
+    {
+     "label": "Item Name Contains",
+     "condition": "it.name like :name",
+     "type": "text"
+    },
+    {
+     "label": "Item SkuCode",
+     "condition": "it.sku_code= :itemSkuCode",
+     "type": "text"
+    },
+    {
+     "label": "Created in Date Range",
+     "condition": "pu.created &gt; :addedOnStart and pu.created &lt; :addedOnEnd",
+     "type": "daterange"
+    },
+    {
+     "label": "Updated in Date Range",
+     "condition": "pui.updated &gt; :updatedOnStart and pui.updated &lt; :updatedOnEnd",
+     "type": "daterange"
+    }
+   ]
+  },
+  "Pending Putaways": {
+   "label": "Pending Putaways New",
+   "anchor_table": "shipping_package",
+   "anchor_alias": "sp",
+   "from_join_clause": "from shipping_package sp\njoin sale_order so on sp.sale_order_id = so.id\njoin channel c on so.channel_id = c.id\njoin address_detail ad on ad.id = sp.shipping_address_id\nleft join state st on (st.iso2_code = ad.state_code and st.country_code = ad.country_code)\nleft join shipping_package_type spt on sp.shipping_package_type_id = spt.id\nleft join sale_order_item soi on soi.shipping_package_id = sp.id\nleft join invoice inv on sp.invoice_id = inv.id\nleft join item_type it on (soi.item_type_id = it.id)\nleft join picklist pl on (pi.picklist_id=pl.id)",
+   "source": "export",
+   "export_name": "Pending Putaways New",
+   "fields": [
+    {
+     "label": "Picklist",
+     "expr": "pl.code"
+    },
+    {
+     "label": "SKU Code",
+     "expr": "it.sku_code"
+    },
+    {
+     "label": "Count of SKU",
+     "expr": "count(it.id)"
+    },
+    {
+     "label": "Sale Order",
+     "expr": "so.display_order_code"
+    },
+    {
+     "label": "Shipping Package No",
+     "expr": "sp.code"
+    },
+    {
+     "label": "Tracking Number",
+     "expr": "sp.tracking_number"
+    }
+   ],
+   "filters": [
+    {
+     "label": "Channel Contains",
+     "condition": "so.channel_id in (:channelFilter)",
+     "type": "multiselect"
+    },
+    {
+     "label": "State Contains",
+     "condition": "st.id in (:stateFilter)",
+     "type": "multiselect"
+    },
+    {
+     "label": "Shipment # or Order #",
+     "condition": "(sp.code = :shipmentFilter or so.code = :shipmentFilter or so.display_order_code = :shipmentFilter)",
+     "type": "text"
+    },
+    {
+     "label": "Picklist Code",
+     "condition": "sp.code in (select distinct shipping_package_code from picklist_item left join picklist on (picklist.id=picklist_item.picklist_id) where code = :picklistFilter  and facility_id=:facilityId)",
+     "type": "text"
+    },
+    {
+     "label": "Invoice Number",
+     "condition": "inv.code = :invoiceNumberFilter",
+     "type": "text"
+    },
+    {
+     "label": "Batch #",
+     "condition": "sp.shipment_batch_code = :batchCodeFilter",
+     "type": "text"
+    },
+    {
+     "label": "Status",
+     "condition": "sp.status_code in (:statusFilter)",
+     "type": "multiselect"
+    },
+    {
+     "label": "Item Name Contains",
+     "condition": "(it.name like :itemNameFilter or it.sku_code like :itemNameFilter)",
+     "type": "text"
+    },
+    {
+     "label": "Shipping Info contains",
+     "condition": "(sp.shipping_provider_code like :providerFilter or sp.shipping_provider_name like :providerFilter or sp.tracking_number like :providerFilter)",
+     "type": "text"
+    },
+    {
+     "label": "Payment Method",
+     "condition": "so.payment_method_code in (:paymentMethodFilter)",
+     "type": "multiselect"
+    },
+    {
+     "label": "Created in Date Range",
+     "condition": "so.created &gt; :createdDateRangeFilterStart and so.created &lt; :createdDateRangeFilterEnd",
+     "type": "daterange"
+    },
+    {
+     "label": "Fulfillment TAT in Date Range",
+     "condition": "so.fulfillment_tat &gt;= :fulfillmentTatDateRangeFilterStart and so.fulfillment_tat &lt;= :fulfillmentTatDateRangeFilterEnd",
+     "type": "daterange"
+    },
+    {
+     "label": "Putaway Pending Filter",
+     "condition": "sp.putaway_pending = :putawayPendingFilter",
+     "type": "boolean"
+    },
+    {
+     "label": "Priority Filter",
+     "condition": "sp.priority in (:priorityFilter)",
+     "type": "multiselect"
+    }
+   ]
+  }
+ },
+ "Returns": {
+  "Reverse Pickup": {
+   "label": "Reverse Pickup",
+   "anchor_table": "reverse_pickup_item",
+   "anchor_alias": "rpi",
+   "from_join_clause": "from reverse_pickup_item rpi\njoin sale_order_item soi on rpi.sale_order_item_id=soi.id\njoin sale_order so on so.id = soi.sale_order_id\njoin channel ch on so.channel_id=ch.id\njoin item_type it on soi.item_type_id=it.id\njoin reverse_pickup rp on rp.sale_order_id=so.id and rpi.reverse_pickup_id=rp.id\njoin reverse_pickup_action rpa on rp.action_code=rpa.code\njoin shipping_package sp on soi.shipping_package_id=sp.id\nleft join sale_order rso on rp.replacement_sale_order_id = rso.id\nleft join shipment_tracking shp on rp.shipment_tracking_id = shp.id\nleft join putaway pt on rp.putaway_id=pt.id",
+   "source": "export",
+   "export_name": "Reverse Pickup",
+   "fields": [
+    {
+     "label": "Sale Order Item Code",
+     "expr": "soi.code"
+    },
+    {
+     "label": "Sale Order Received",
+     "expr": "soi.created"
+    },
+    {
+     "label": "Original Sale Order Code",
+     "expr": "so.display_order_code"
+    },
+    {
+     "label": "Item Name",
+     "expr": "it.name"
+    },
+    {
+     "label": "Item SkuCode",
+     "expr": "it.sku_code"
+    },
+    {
+     "label": "Reverse Pickup No",
+     "expr": "rp.code"
+    },
+    {
+     "label": "Tracking No",
+     "expr": "shp.tracking_number"
+    },
+    {
+     "label": "Dispatched Date",
+     "expr": "sp.dispatch_time"
+    },
+    {
+     "label": "Reverse Pickup Created",
+     "expr": "rp.created"
+    },
+    {
+     "label": "Reverse Pickup Last Updated",
+     "expr": "rp.updated"
+    },
+    {
+     "label": "Reverse Pickup Status",
+     "expr": "rp.status_code"
+    },
+    {
+     "label": "Reverse Pickup Action",
+     "expr": "rpa.code"
+    },
+    {
+     "label": "Return Reason",
+     "expr": "rpi.return_reason"
+    },
+    {
+     "label": "Replacement Sale Order Code",
+     "expr": "rso.code"
+    },
+    {
+     "label": "Channel Name",
+     "expr": "ch.name"
+    },
+    {
+     "label": "Total Received Items",
+     "expr": "(select count(rpi.id) from reverse_pickup_item rpi where rpi.reverse_pickup_id = rp.id group by rpi.reverse_pickup_id )"
+    },
+    {
+     "label": "QC Comment",
+     "expr": "(select putaway_comment from reverse_pickup_item rpi where rpi.sale_order_item_id= soi.id and rpi.reverse_pickup_id=soi.reverse_pickup_id)"
+    },
+    {
+     "label": "Reverse Pickup Created By",
+     "expr": "(select email from user u where u.id= pt.user_id)"
+    },
+    {
+     "label": "Putaway Code",
+     "expr": "pt.code"
+    },
+    {
+     "label": "Putaway Created By",
+     "expr": "(select email from user u where u.id= pt.user_id)"
+    },
+    {
+     "label": "Putaway Status",
+     "expr": "pt.status_code"
+    },
+    {
+     "label": "Putaway Last Updated",
+     "expr": "pt.updated"
+    },
+    {
+     "label": "Courier Provider Name",
+     "expr": "(select name from shipping_provider where id=shp.shipping_provider_id)"
+    }
+   ],
+   "filters": [
+    {
+     "label": "Reverse Pickup Created Date Range",
+     "condition": "rp.created &gt; :reversePickupDateRangeStart and rp.created &lt; :reversePickupDateRangeEnd",
+     "type": "daterange"
+    },
+    {
+     "label": "Channels",
+     "condition": "ch.code in (:channelFilter)",
+     "type": "multiselect"
+    }
+   ]
+  },
+  "Reverse Pickup Payments": {
+   "label": "Reverse Pickup Payments",
+   "anchor_table": "reverse_pickup",
+   "anchor_alias": "rp",
+   "from_join_clause": "from reverse_pickup rp\njoin sale_order so on so.id = rp.sale_order_id\njoin sale_order_item soi on soi.reverse_pickup_id = rp.id\nleft join sale_order replacement_so on replacement_so.id = rp.replacement_sale_order_id",
+   "source": "export",
+   "export_name": "Reverse Pickup Payments",
+   "fields": [
+    {
+     "label": "Sale Order Item Code",
+     "expr": "soi.code"
+    },
+    {
+     "label": "Sale Order Code",
+     "expr": "so.code"
+    },
+    {
+     "label": "Reverse Pickup Code",
+     "expr": "rp.code"
+    },
+    {
+     "label": "Replacement Sale Order Code",
+     "expr": "replacement_so.code"
+    },
+    {
+     "label": "Payment Amount",
+     "expr": "soi.selling_price"
+    },
+    {
+     "label": "Last Dispute Reason",
+     "expr": "rp.last_dispute_reason"
+    },
+    {
+     "label": "Created On",
+     "expr": "rp.created"
+    },
+    {
+     "label": "Return Reason",
+     "expr": "soi.reverse_pickup_reason"
+    },
+    {
+     "label": "Pickup Instruction",
+     "expr": "rp.pickup_instruction"
+    }
+   ],
+   "filters": [
+    {
+     "label": "Reverse Pickup Code is",
+     "condition": "rp.code = :reversePickupCodeFilter",
+     "type": "text"
+    },
+    {
+     "label": "Sale Order Code is",
+     "condition": "so.code = :saleOrderCodeFilter",
+     "type": "text"
+    },
+    {
+     "label": "Replacement Sale Order Code is",
+     "condition": "replacement_so.code = :replacementSaleOrderCodeFilter",
+     "type": "text"
+    },
+    {
+     "label": "Created in Date Range",
+     "condition": "rp.created &gt; :dateRangeFilterStart and rp.created &lt; :dateRangeFilterEnd",
+     "type": "daterange"
+    }
+   ]
+  },
+  "Return Manifest": {
+   "label": "Return Manifest",
+   "anchor_table": "return_manifest_item",
+   "anchor_alias": "rmi",
+   "from_join_clause": "from return_manifest_item rmi\njoin return_manifest rm on rmi.return_manifest_id = rm.id\njoin \n\t\t\tshipping_package sp on rmi.shipping_package_id = sp.id\njoin sale_order so on sp.sale_order_id=so.id\njoin channel ch on so.channel_id=ch.id\njoin \n\t\t\tuser u on rm.user_id = u.id\nleft join reshipment rs on rs.id=sp.reshipment_id",
+   "source": "export",
+   "export_name": "Return Manifest",
+   "fields": [
+    {
+     "label": "Return Manifest Code",
+     "expr": "rm.code"
+    },
+    {
+     "label": "Return Manifest Status",
+     "expr": "rm.status_code"
+    },
+    {
+     "label": "Created By",
+     "expr": "u.username"
+    },
+    {
+     "label": "Created At",
+     "expr": "rmi.created"
+    },
+    {
+     "label": "Shipping Package Code",
+     "expr": "sp.code"
+    },
+    {
+     "label": "Tracking Number",
+     "expr": "sp.tracking_number"
+    },
+    {
+     "label": "Sale Order Code",
+     "expr": "so.code"
+    },
+    {
+     "label": "Customer Name",
+     "expr": "so.customer_name"
+    },
+    {
+     "label": "Customer Email",
+     "expr": "so.notification_email"
+    },
+    {
+     "label": "Shipping Package Status",
+     "expr": "sp.status_code"
+    },
+    {
+     "label": "Reshipment Action",
+     "expr": "rs.action_code"
+    },
+    {
+     "label": "Dispatch Time",
+     "expr": "sp.dispatch_time"
+    },
+    {
+     "label": "Shipping Provider",
+     "expr": "sp.shipping_provider_name"
+    },
+    {
+     "label": "Updated At",
+     "expr": "rmi.updated"
+    },
+    {
+     "label": "Channel Name",
+     "expr": "ch.name"
+    }
+   ],
+   "filters": [
+    {
+     "label": "Return Manifest Status",
+     "condition": "rm.status_code in (:statusCodes)",
+     "type": "multiselect"
+    },
+    {
+     "label": "Shipping Provider",
+     "condition": "sp.name like :shippingProviderFilter",
+     "type": "text"
+    },
+    {
+     "label": "Updated Since (hours)",
+     "condition": null,
+     "type": null
+    },
+    {
+     "label": "Returned  On Date",
+     "condition": "rmi.created  &gt; :addedOnStart and rmi.created &lt; :addedOnEnd",
+     "type": "daterange"
+    },
+    {
+     "label": "Channels",
+     "condition": "ch.code in (:channelFilter)",
+     "type": "multiselect"
+    }
+   ]
+  },
+  "Return Invoices": {
+   "label": "Return Invoices",
+   "anchor_table": "sale_order_item",
+   "anchor_alias": "soi",
+   "from_join_clause": "FROM sale_order_item soi\njoin sale_order so on (soi.`sale_order_id` = so.`id`)\njoin item_type it on soi.`item_type_id` = it.`id`\nleft join shipping_package sp on soi.`shipping_package_id` = sp.`id`\nleft join invoice inv on inv.id=sp.invoice_id\nleft join invoice_item invt on  invt.id = soi.invoice_item_id\nleft join invoice invr on invr.id = sp.return_invoice_id\nleft join return_manifest_item rmi on sp.id = rmi.shipping_package_id\nleft join facility f on soi.facility_id = f.id",
+   "source": "export",
+   "export_name": "Return Invoices",
+   "fields": [
+    {
+     "label": "Invoice Code",
+     "expr": "inv.code"
+    },
+    {
+     "label": "Return Invoice Code",
+     "expr": "invr.code"
+    },
+    {
+     "label": "Shipping Package Code",
+     "expr": "sp.code"
+    },
+    {
+     "label": "Shipping Package Status Code",
+     "expr": "sp.status_code"
+    },
+    {
+     "label": "Return Date",
+     "expr": "rmi.created"
+    },
+    {
+     "label": "Customer Name",
+     "expr": "so.customer_name"
+    },
+    {
+     "label": "Item SKU Code",
+     "expr": "it.sku_code"
+    },
+    {
+     "label": "Item Type Name",
+     "expr": "it.name"
+    },
+    {
+     "label": "Quantity",
+     "expr": "sp.no_of_items"
+    },
+    {
+     "label": "Unit Price",
+     "expr": "sum(CASE WHEN (invt.unit_price) is NULL THEN 0.00 ELSE (invt.unit_price) END)"
+    },
+    {
+     "label": "CGST",
+     "expr": "sum(CASE WHEN (invt.central_gst) is NULL THEN 0.00 ELSE (invt.central_gst) END)"
+    },
+    {
+     "label": "IGST",
+     "expr": "sum(CASE WHEN (invt.integrated_gst) is NULL THEN 0.00 ELSE (invt.integrated_gst) END)"
+    },
+    {
+     "label": "SGST",
+     "expr": "sum(CASE WHEN (invt.state_gst) is NULL THEN 0.00 ELSE (invt.state_gst) END)"
+    },
+    {
+     "label": "UTGST",
+     "expr": "sum(CASE WHEN (invt.union_territory_gst) is NULL THEN 0.00 ELSE (invt.union_territory_gst) END)"
+    },
+    {
+     "label": "CESS",
+     "expr": "sum(CASE WHEN (invt.compensation_cess) is NULL THEN 0.00 ELSE (invt.compensation_cess) END)"
+    },
+    {
+     "label": "CGST Rate",
+     "expr": "invt.central_gst_percentage"
+    },
+    {
+     "label": "IGST Rate",
+     "expr": "invt.integrated_gst_percentage"
+    },
+    {
+     "label": "SGST Rate",
+     "expr": "invt.state_gst_percentage"
+    },
+    {
+     "label": "UTGST Rate",
+     "expr": "invt.union_territory_gst_percentage"
+    },
+    {
+     "label": "CESS Rate",
+     "expr": "invt.compensation_cess_percentage"
+    }
+   ],
+   "filters": [
+    {
+     "label": "Shipping Provider",
+     "condition": "sp.shipping_provider_name like (:shippingProvider)",
+     "type": "text"
+    },
+    {
+     "label": "Added in Date Range",
+     "condition": "so.created &gt; :addedOnStart and so.created &lt; :addedOnEnd",
+     "type": "daterange"
+    },
+    {
+     "label": "Dispatched in Date Range",
+     "condition": "sp.dispatch_time &gt; :dispatchedOnStart and sp.dispatch_time &lt; :dispatchedOnEnd",
+     "type": "daterange"
+    },
+    {
+     "label": "Invoiced in Date Range",
+     "condition": "inv.created &gt; :invoicedOnStart and inv.created &lt; :invoicedOnEnd",
+     "type": "daterange"
+    },
+    {
+     "label": "Returned in Date Range",
+     "condition": "rmi.created &gt; :returnedOnStart and rmi.created &lt; :returnedOnEnd",
+     "type": "daterange"
+    },
+    {
+     "label": "Sale Order Item Status",
+     "condition": "soi.status_code in (:status)",
+     "type": "multiselect"
+    },
+    {
+     "label": "Sale Order Status",
+     "condition": "so.status_code in (:statusSaleOrder)",
+     "type": "multiselect"
+    },
+    {
+     "label": "Item Name Contains",
+     "condition": "it.name like :name",
+     "type": "text"
+    },
+    {
+     "label": "Payment Method",
+     "condition": "so.payment_method_code = :paymentMethodCode",
+     "type": "select"
+    },
+    {
+     "label": "On Hold",
+     "condition": "soi.on_hold = :onHold",
+     "type": "boolean"
+    },
+    {
+     "label": "Item Name Contains",
+     "condition": "it.name like :itemTypeName",
+     "type": "text"
+    },
+    {
+     "label": "Item SkuCode",
+     "condition": "it.sku_code= :itemSkuCode",
+     "type": "text"
+    },
+    {
+     "label": "Updated Since (hours)",
+     "condition": null,
+     "type": null
+    }
+   ]
+  },
+  "Courier Returns": {
+   "label": "Courier Returns",
+   "anchor_table": "sale_order",
+   "anchor_alias": "so",
+   "from_join_clause": "from sale_order so\njoin shipping_package sp on so.id = sp.sale_order_id\n            inner\njoin shipment_tracking_status sts on sts.code = sp.shipment_tracking_status_code\n            inner\njoin shipping_package_status sps on sps.id = sts.shipping_package_status_id and sps.code = 'RETURN_EXPECTED'\nleft join reshipment re on so.id = re.sale_order_id\nleft join reshipment_action rpa on rpa.code = re.action_code\nleft join channel c on c.id = so.channel_id\nleft join return_manifest_item rmi on rmi.shipping_package_id = sp.id\nleft join return_manifest rm on rm.id = rmi.return_manifest_id\nleft join user rm_u on rm_u.id = rm.user_id\nleft join putaway p on p.id = sp.courier_return_putaway_id and p.type = 'PUTAWAY_COURIER_RETURNED_ITEMS'\nleft join user p_u on p_u.id = p.user_id\njoin facility f on f.id = sp.facility_id\nleft join facility  rf on rf.id = sp.return_facility_id",
+   "source": "export",
+   "export_name": "Courier Returns",
+   "fields": [
+    {
+     "label": "Sale Order No",
+     "expr": "so.code"
+    },
+    {
+     "label": "Shipping Package Code",
+     "expr": "sp.code"
+    },
+    {
+     "label": "Shipping Package Status",
+     "expr": "sp.status_code"
+    },
+    {
+     "label": "Shipping Provider",
+     "expr": "sp.shipping_provider_code"
+    },
+    {
+     "label": "AWB No",
+     "expr": "sp.tracking_number"
+    },
+    {
+     "label": "Return Manifest Code",
+     "expr": "rm.code"
+    },
+    {
+     "label": "Return Manifest Status",
+     "expr": "rm.status_code"
+    },
+    {
+     "label": "Return Manifest Created By",
+     "expr": "rm_u.email"
+    },
+    {
+     "label": "Return Manifest Created At",
+     "expr": "rm.created"
+    },
+    {
+     "label": "Reshipment Action",
+     "expr": "rpa.description"
+    },
+    {
+     "label": "Channel",
+     "expr": "c.name"
+    },
+    {
+     "label": "Putaway No",
+     "expr": "p.code"
+    },
+    {
+     "label": "Putaway Status",
+     "expr": "p.status_code"
+    },
+    {
+     "label": "Putaway By",
+     "expr": "p_u.email"
+    },
+    {
+     "label": "Putaway Date",
+     "expr": "p.created"
+    },
+    {
+     "label": "Dispatch Facility",
+     "expr": "f.display_name"
+    },
+    {
+     "label": "Return Facility",
+     "expr": "rf.display_name"
+    }
+   ],
+   "filters": [
+    {
+     "label": "Channel",
+     "condition": "c.name = :channelName",
+     "type": "text"
+    },
+    {
+     "label": "Sale Order Created In Date Range",
+     "condition": "so.created &gt; :soDateRangeStart and so.created &lt; :soDateRangeEnd",
+     "type": "daterange"
+    },
+    {
+     "label": "Putaway status",
+     "condition": "p.status_code = :putawayStatus",
+     "type": "text"
+    },
+    {
+     "label": "Shipping Package Status",
+     "condition": "sp.status_code = :shippingPackageStatus",
+     "type": "text"
+    }
+   ]
+  },
+  "Putback Pending": {
+   "label": "Putback Pending All Facility",
+   "anchor_table": "shipping_package",
+   "anchor_alias": "sp",
+   "from_join_clause": "from shipping_package sp\njoin sale_order so on sp.sale_order_id = so.id\njoin channel c on so.channel_id = c.id\njoin address_detail ad on ad.id = sp.shipping_address_id\nleft join state st on (st.iso2_code = ad.state_code and st.country_code = ad.country_code)\nleft join shipping_package_type spt on sp.shipping_package_type_id = spt.id\nleft join sale_order_item soi on soi.sale_order_id = so.id\nleft join invoice inv on sp.invoice_id = inv.id\nleft join item_type it on (soi.item_type_id = it.id)\nleft join picklist pl on (pi.picklist_id=pl.id)\nleft join facility fa on soi.facility_id = fa.id\nleft join invoice_item invt on invt.id = soi.invoice_item_id\nleft join party pa on pa.id = fa.id\nleft join item_type_inventory iti on soi.item_type_inventory_id = iti.id\nleft join shelf sh on iti.shelf_id = sh.id\nleft join batch ba on ba.id = iti.batch_id",
+   "source": "export",
+   "export_name": "Putback Pending All Facility",
+   "fields": [
+    {
+     "label": "Shipment",
+     "expr": "so.code"
+    },
+    {
+     "label": "Display Order #",
+     "expr": "so.display_order_code"
+    },
+    {
+     "label": "Shipment",
+     "expr": "sp.code"
+    },
+    {
+     "label": "ContainsGiftWrap",
+     "expr": "sum(soi.gift_wrap = true) "
+    },
+    {
+     "label": "Item Contains",
+     "expr": "soi.gift_wrap"
+    },
+    {
+     "label": "Products",
+     "expr": "it.sku_code"
+    },
+    {
+     "label": "ChannelColorCode",
+     "expr": "c.color_code"
+    },
+    {
+     "label": "ChannelShortName",
+     "expr": "c.short_name"
+    },
+    {
+     "label": "channelName",
+     "expr": "c.name"
+    },
+    {
+     "label": "SourceCode",
+     "expr": "#{T(com.unifier.core.cache.CacheManager).getInstance().getCache('channelCache').getChannelByCode(#channel).source.code}"
+    },
+    {
+     "label": "giftMessagePrintingOnChannelEnabled",
+     "expr": "#{T(com.unifier.core.cache.CacheManager).getInstance().getCache('channelCache').isGiftMessagePrintingOnChannelEnabled(#channel)}"
+    },
+    {
+     "label": "Channel",
+     "expr": "c.code"
+    },
+    {
+     "label": "ChannelCode",
+     "expr": "c.code"
+    },
+    {
+     "label": "ChannelID",
+     "expr": "c.id"
+    },
+    {
+     "label": "BulkInvoiceShipmentProcessingCount",
+     "expr": "#{T(com.unifier.core.cache.CacheManager).getInstance().getCache('channelCache').getBulkInvoiceShipmentProcessingCount(#channel)}"
+    },
+    {
+     "label": "Status",
+     "expr": "sp.status_code"
+    },
+    {
+     "label": "Priority",
+     "expr": "sp.priority"
+    },
+    {
+     "label": "Item Type SKUs",
+     "expr": "group_concat(it.sku_code)"
+    },
+    {
+     "label": "Item Type Ids",
+     "expr": "group_concat(it.id)"
+    },
+    {
+     "label": "Seller SKUs",
+     "expr": "group_concat(soi.seller_sku_code)"
+    },
+    {
+     "label": "Item Id Details",
+     "expr": "group_concat(distinct concat_ws('~', it.id,it.sku_code,it.name) SEPARATOR '^')"
+    },
+    {
+     "label": "Seller SKU Details",
+     "expr": "group_concat(distinct concat_ws('~', soi.seller_sku_code,soi.channel_product_name) SEPARATOR '^')"
+    },
+    {
+     "label": "Picklist",
+     "expr": "pl.code"
+    },
+    {
+     "label": "Invoice No.",
+     "expr": "inv.code"
+    },
+    {
+     "label": "State",
+     "expr": "st.name"
+    }
+   ],
+   "filters": [
+    {
+     "label": "Channel Contains",
+     "condition": "so.channel_id in (:channelFilter)",
+     "type": "multiselect"
+    },
+    {
+     "label": "State Contains",
+     "condition": "st.id in (:stateFilter)",
+     "type": "multiselect"
+    },
+    {
+     "label": "Shipment # or Order #",
+     "condition": "(sp.code = :shipmentFilter or so.code = :shipmentFilter or so.display_order_code = :shipmentFilter)",
+     "type": "text"
+    },
+    {
+     "label": "Picklist Code",
+     "condition": "sp.code in (select distinct shipping_package_code from picklist_item left join picklist on (picklist.id=picklist_item.picklist_id) where code = :picklistFilter  and facility_id=:facilityId)",
+     "type": "text"
+    },
+    {
+     "label": "Invoice Number",
+     "condition": "inv.code = :invoiceNumberFilter",
+     "type": "text"
+    },
+    {
+     "label": "Batch #",
+     "condition": "sp.shipment_batch_code = :batchCodeFilter",
+     "type": "text"
+    },
+    {
+     "label": "Status",
+     "condition": "sp.status_code in (:statusFilter)",
+     "type": "multiselect"
+    },
+    {
+     "label": "Item Name Contains",
+     "condition": "(it.name like :itemNameFilter or it.sku_code like :itemNameFilter)",
+     "type": "text"
+    },
+    {
+     "label": "Shipping Info contains",
+     "condition": "(sp.shipping_provider_code like :providerFilter or sp.shipping_provider_name like :providerFilter or sp.tracking_number like :providerFilter)",
+     "type": "text"
+    },
+    {
+     "label": "Payment Method",
+     "condition": "so.payment_method_code in (:paymentMethodFilter)",
+     "type": "multiselect"
+    },
+    {
+     "label": "Created in Date Range",
+     "condition": "so.created &gt; :createdDateRangeFilterStart and so.created &lt; :createdDateRangeFilterEnd",
+     "type": "daterange"
+    },
+    {
+     "label": "Fulfillment TAT in Date Range",
+     "condition": "so.fulfillment_tat &gt;= :fulfillmentTatDateRangeFilterStart and so.fulfillment_tat &lt;= :fulfillmentTatDateRangeFilterEnd",
+     "type": "daterange"
+    },
+    {
+     "label": "Putaway Pending Filter",
+     "condition": "sp.putaway_pending = :putawayPendingFilter",
+     "type": "boolean"
+    },
+    {
+     "label": "Priority Filter",
+     "condition": "sp.priority in (:priorityFilter)",
+     "type": "multiselect"
+    }
+   ]
+  },
+  "Not Found Audit": {
+   "label": "NotFoundAuditExport",
+   "anchor_table": "not_found_audit",
+   "anchor_alias": "nfa",
+   "from_join_clause": "FROM not_found_audit nfa",
+   "source": "export",
+   "export_name": "NotFoundAuditExport",
+   "fields": [
+    {
+     "label": "ID",
+     "expr": "nfa.id"
+    },
+    {
+     "label": "Not Found At",
+     "expr": "nfa.not_found_at"
+    },
+    {
+     "label": "SKU Code",
+     "expr": "nfa.sku_code"
+    },
+    {
+     "label": "SKU Name",
+     "expr": "nfa.sku_name"
+    },
+    {
+     "label": "Shelf Code",
+     "expr": "nfa.shelf_code"
+    },
+    {
+     "label": "Quantity Not Found",
+     "expr": "nfa.quantity_not_found"
+    },
+    {
+     "label": "Workflow",
+     "expr": "nfa.workflow"
+    },
+    {
+     "label": "Entity Code",
+     "expr": "nfa.entity_code"
+    },
+    {
+     "label": "User Email",
+     "expr": "nfa.user_email"
+    },
+    {
+     "label": "Tenant ID",
+     "expr": "nfa.tenant_id"
+    },
+    {
+     "label": "Facility ID",
+     "expr": "nfa.facility_id"
+    }
+   ],
+   "filters": [
+    {
+     "label": "Not found at Date",
+     "condition": "nfa.not_found_at &gt;= :notFoundAtDateStart and nfa.not_found_at &lt;= :notFoundAtDateEnd",
+     "type": "daterange"
+    },
+    {
+     "label": "Workflow",
+     "condition": "nfa.workflow in (:workflow)",
+     "type": "multiselect"
+    },
+    {
+     "label": "User Email",
+     "condition": "nfa.user_email = :userEmail",
+     "type": "text"
+    },
+    {
+     "label": "Tenant ID",
+     "condition": "nfa.tenant_id = :tenantId",
+     "type": "number"
+    },
+    {
+     "label": "Facility ID",
+     "condition": "nfa.facility_id = :facilityId",
+     "type": "number"
+    }
+   ]
+  }
+ },
+ "Work Order / Kitting / Roll-up SKU": {
+  "Work Order": {
+   "label": "Work Order",
+   "anchor_table": "work_order",
+   "anchor_alias": "work_order",
+   "from_join_clause": "FROM work_order work_order",
+   "source": "raw",
+   "export_name": null,
+   "fields": [
+    {
+     "label": "Id",
+     "expr": "work_order.id"
+    },
+    {
+     "label": "Facility Id",
+     "expr": "work_order.facility_id"
+    },
+    {
+     "label": "User Id",
+     "expr": "work_order.user_id"
+    },
+    {
+     "label": "Code",
+     "expr": "work_order.code"
+    },
+    {
+     "label": "Pick Set Id",
+     "expr": "work_order.pick_set_id"
+    },
+    {
+     "label": "Picklist Id",
+     "expr": "work_order.picklist_id"
+    },
+    {
+     "label": "Vendor Id",
+     "expr": "work_order.vendor_id"
+    },
+    {
+     "label": "Status Code",
+     "expr": "work_order.status_code"
+    },
+    {
+     "label": "Type",
+     "expr": "work_order.type"
+    },
+    {
+     "label": "Item Type Id",
+     "expr": "work_order.item_type_id"
+    },
+    {
+     "label": "Quantity",
+     "expr": "work_order.quantity"
+    },
+    {
+     "label": "Mrp",
+     "expr": "work_order.mrp"
+    },
+    {
+     "label": "Cost",
+     "expr": "work_order.cost"
+    },
+    {
+     "label": "Vendor Batch Number",
+     "expr": "work_order.vendor_batch_number"
+    },
+    {
+     "label": "Country Of Origin",
+     "expr": "work_order.country_of_origin"
+    },
+    {
+     "label": "Bill Of Entry",
+     "expr": "work_order.bill_of_entry"
+    },
+    {
+     "label": "Manufacturing Date",
+     "expr": "work_order.manufacturing_date"
+    },
+    {
+     "label": "Expiry Date",
+     "expr": "work_order.expiry_date"
+    },
+    {
+     "label": "Created",
+     "expr": "work_order.created"
+    },
+    {
+     "label": "Updated",
+     "expr": "work_order.updated"
+    },
+    {
+     "label": "Completed Quantity",
+     "expr": "work_order.completed_quantity"
+    },
+    {
+     "label": "Putaway Id",
+     "expr": "work_order.putaway_id"
+    },
+    {
+     "label": "Batch Id",
+     "expr": "work_order.batch_id"
+    },
+    {
+     "label": "Shelf Id",
+     "expr": "work_order.shelf_id"
+    },
+    {
+     "label": "Trade Price",
+     "expr": "work_order.trade_price"
+    }
+   ],
+   "filters": []
+  },
+  "Kit Composition": {
+   "label": "Kit Composition",
+   "anchor_table": "kit_item_type",
+   "anchor_alias": "kit_item_type",
+   "from_join_clause": "FROM kit_item_type kit_item_type",
+   "source": "raw",
+   "export_name": null,
+   "fields": [
+    {
+     "label": "Id",
+     "expr": "kit_item_type.id"
+    },
+    {
+     "label": "Item Type Id",
+     "expr": "kit_item_type.item_type_id"
+    },
+    {
+     "label": "Component Sku Id",
+     "expr": "kit_item_type.component_sku_id"
+    },
+    {
+     "label": "Quantity",
+     "expr": "kit_item_type.quantity"
+    },
+    {
+     "label": "Created",
+     "expr": "kit_item_type.created"
+    },
+    {
+     "label": "Updated",
+     "expr": "kit_item_type.updated"
+    },
+    {
+     "label": "Unit Price",
+     "expr": "kit_item_type.unit_price"
+    }
+   ],
+   "filters": []
+  },
+  "Bundle": {
+   "label": "Bundle",
+   "anchor_table": "bundle",
+   "anchor_alias": "bundle",
+   "from_join_clause": "FROM bundle bundle",
+   "source": "raw",
+   "export_name": null,
+   "fields": [
+    {
+     "label": "Id",
+     "expr": "bundle.id"
+    },
+    {
+     "label": "Tenant Id",
+     "expr": "bundle.tenant_id"
+    },
+    {
+     "label": "Code",
+     "expr": "bundle.code"
+    },
+    {
+     "label": "Item Type Id",
+     "expr": "bundle.item_type_id"
+    },
+    {
+     "label": "Tax Calculation Type",
+     "expr": "bundle.tax_calculation_type"
+    },
+    {
+     "label": "Created",
+     "expr": "bundle.created"
+    },
+    {
+     "label": "Updated",
+     "expr": "bundle.updated"
+    }
+   ],
+   "filters": []
+  },
+  "Bundle Items (Roll-up SKU)": {
+   "label": "Bundle Items",
+   "anchor_table": "bundle_item_type",
+   "anchor_alias": "bundle_item_type",
+   "from_join_clause": "FROM bundle_item_type bundle_item_type",
+   "source": "raw",
+   "export_name": null,
+   "fields": [
+    {
+     "label": "Id",
+     "expr": "bundle_item_type.id"
+    },
+    {
+     "label": "Bundle Id",
+     "expr": "bundle_item_type.bundle_id"
+    },
+    {
+     "label": "Item Type Id",
+     "expr": "bundle_item_type.item_type_id"
+    },
+    {
+     "label": "Quantity",
+     "expr": "bundle_item_type.quantity"
+    },
+    {
+     "label": "Price",
+     "expr": "bundle_item_type.price"
+    },
+    {
+     "label": "Price Ratio",
+     "expr": "bundle_item_type.price_ratio"
+    },
+    {
+     "label": "Created",
+     "expr": "bundle_item_type.created"
+    },
+    {
+     "label": "Updated",
+     "expr": "bundle_item_type.updated"
+    }
+   ],
+   "filters": []
+  }
+ },
+ "Shipping Package": {
+  "Shipping Package": {
+   "label": "Shipping Package",
+   "anchor_table": "shipping_package",
+   "anchor_alias": "sp",
+   "from_join_clause": "from shipping_package sp\nleft join sale_order so on sp.sale_order_id = so.id\nleft join channel c on so.channel_id= c.id\nleft join pick_set ps on sp.pick_set_id = ps.id\nleft join pick_bucket_slot pbs on pbs.shipping_package_id = sp.id\nleft join invoice inv on inv.id=sp.invoice_id\nleft join shipping_method sm on sp.shipping_method_id = sm.id\nleft join address_detail addr on sp.shipping_address_id = addr.id\nleft join shipping_manifest_item shmi on shmi.shipping_package_id=sp.id\nleft join shipping_manifest shm on shmi.shipping_manifest_id=shm.id\nleft join return_manifest_item rmi on rmi.shipping_package_id=sp.id\nleft join return_manifest rm on rmi.return_manifest_id=rm.id\nleft join shipping_package_type spt on spt.id = sp.shipping_package_type_id\nleft join picklist pl on pbs.picklist_id = pl.id",
+   "source": "export",
+   "export_name": "Shipping Package",
+   "fields": [
+    {
+     "label": "Shipping Package No",
+     "expr": "sp.code"
+    },
+    {
+     "label": "Status",
+     "expr": "sp.status_code"
+    },
+    {
+     "label": "Invoice Code",
+     "expr": "inv.code"
+    },
+    {
+     "label": "Shipping Provider",
+     "expr": "sp.shipping_provider_name"
+    },
+    {
+     "label": "Shipping Method",
+     "expr": "sm.name"
+    },
+    {
+     "label": "Cash On Delivery",
+     "expr": "case when so.payment_method_code = 'COD' then 1 else 0 end"
+    },
+    {
+     "label": "Shipping Address Name",
+     "expr": "addr.name"
+    },
+    {
+     "label": "Shipping Address Line 1",
+     "expr": "addr.address_line1"
+    },
+    {
+     "label": "Shipping Address Line 2",
+     "expr": "addr.address_line2"
+    },
+    {
+     "label": "Shipping Address City",
+     "expr": "addr.city"
+    },
+    {
+     "label": "Shipping Address State",
+     "expr": "addr.state_code"
+    },
+    {
+     "label": "Shipping Address Pincode",
+     "expr": "addr.pincode"
+    },
+    {
+     "label": "Shipping Address Phone",
+     "expr": "addr.phone"
+    },
+    {
+     "label": "Picklist Number",
+     "expr": "pl.code"
+    },
+    {
+     "label": "Sale Order Code",
+     "expr": "so.code"
+    },
+    {
+     "label": "Zone",
+     "expr": "ps.name"
+    },
+    {
+     "label": "Tracking Number",
+     "expr": "sp.tracking_number"
+    },
+    {
+     "label": "Actual Weight(gm)",
+     "expr": "sp.actual_weight"
+    },
+    {
+     "label": "Shipping Charges",
+     "expr": "sp.shipping_charges"
+    },
+    {
+     "label": "COD Charges",
+     "expr": "sp.cash_on_delivery_charges"
+    },
+    {
+     "label": "Additional Info",
+     "expr": "sp.additional_info"
+    },
+    {
+     "label": "Total Price",
+     "expr": "sp.total_price"
+    },
+    {
+     "label": "No Of Items",
+     "expr": "sp.no_of_items"
+    },
+    {
+     "label": "No Of Boxes",
+     "expr": "sp.no_of_boxes"
+    },
+    {
+     "label": "Packing Cost",
+     "expr": "spt.packing_cost"
+    }
+   ],
+   "filters": [
+    {
+     "label": "Shipping Provider",
+     "condition": "sp.shipping_provider_name like (:shippingProviderFilter)",
+     "type": "text"
+    },
+    {
+     "label": "Added in Date Range",
+     "condition": "sp.created &gt; :dateRangeStart and sp.created &lt; :dateRangeEnd",
+     "type": "daterange"
+    },
+    {
+     "label": "Dispatched in Date Range",
+     "condition": "sp.dispatch_time &gt; :dateDispatchedRangeStart and sp.dispatch_time &lt; :dateDispatchedRangeEnd",
+     "type": "daterange"
+    },
+    {
+     "label": "Delivered in Date Range",
+     "condition": "sp.delivery_time &gt; :dateDeliveredRangeStart and sp.delivery_time &lt; :dateDeliveredRangeEnd",
+     "type": "daterange"
+    },
+    {
+     "label": "Shipping Method",
+     "condition": "sm.id in (:shippingMethodId)",
+     "type": "multiselect"
+    },
+    {
+     "label": "Shipping Package Status",
+     "condition": "sp.status_code in (:status)",
+     "type": "multiselect"
+    },
+    {
+     "label": "Updated Since (hours)",
+     "condition": null,
+     "type": null
+    },
+    {
+     "label": "Channels",
+     "condition": "c.code in (:channelFilter)",
+     "type": "multiselect"
+    }
+   ]
+  },
+  "Picklist": {
+   "label": "Picklist",
+   "anchor_table": "picklist",
+   "anchor_alias": "p",
+   "from_join_clause": "from picklist p\njoin picklist_item pi on pi.picklist_id = p.id\njoin sale_order so on pi.sale_order_code =so.code\njoin user u on u.id = p.user_id\njoin item_type it on (it.sku_code = pi.sku_code and it.tenant_id = :tenantId)\nleft join batch b on (b.code=pi.batch_code and b.tenant_id = :tenantId)",
+   "source": "export",
+   "export_name": "Picklist",
+   "fields": [
+    {
+     "label": "Picklist Code",
+     "expr": "p.code"
+    },
+    {
+     "label": "Sale Order Item Code",
+     "expr": "pi.sale_order_item_code"
+    },
+    {
+     "label": "Shipping Package Code",
+     "expr": "pi.shipping_package_code"
+    },
+    {
+     "label": "Sale Order Code",
+     "expr": "pi.sale_order_code"
+    },
+    {
+     "label": "Item SkuCode",
+     "expr": "pi.sku_code"
+    },
+    {
+     "label": "Item Type Name",
+     "expr": "it.name"
+    },
+    {
+     "label": "Shelf Code",
+     "expr": "pi.shelf_code"
+    },
+    {
+     "label": "Picklist Created By",
+     "expr": "u.username"
+    },
+    {
+     "label": "Item Status",
+     "expr": "pi.status_code"
+    },
+    {
+     "label": "Picklist Status",
+     "expr": "p.status_code"
+    },
+    {
+     "label": "Batch Code",
+     "expr": "b.code"
+    },
+    {
+     "label": "Created",
+     "expr": "p.created"
+    },
+    {
+     "label": "Updated",
+     "expr": "p.updated"
+    }
+   ],
+   "filters": [
+    {
+     "label": "Picklist No.",
+     "condition": "p.code= :picklistCode",
+     "type": "text"
+    },
+    {
+     "label": "Item Type SkuCode",
+     "condition": "pi.sku_code= :itemSkuCode",
+     "type": "text"
+    },
+    {
+     "label": "Batch Code Contains",
+     "condition": "b.code= :batchCode",
+     "type": "text"
+    },
+    {
+     "label": "User Name Contains",
+     "condition": "u.username like :userName",
+     "type": "text"
+    },
+    {
+     "label": "In Date Range",
+     "condition": "p.created &gt; :addedOnStart and p.created &lt; :addedOnEnd",
+     "type": "daterange"
+    },
+    {
+     "label": "Updated in Date Range",
+     "condition": "p.updated &gt; :updatedOnStart and p.updated &lt; :updatedOnEnd",
+     "type": "daterange"
+    },
+    {
+     "label": "Updated Since (Hours) - Deprecated",
+     "condition": "p.updated &gt; DATE_SUB(:exportExecutionTime, INTERVAL :updatedSince HOUR)",
+     "type": "text"
+    },
+    {
+     "label": "Fulfillment in Date Range",
+     "condition": "so.fulfillment_tat &gt; :fulfillmentTatDateRangeFilterStart and so.fulfillment_tat &lt; :fulfillmentTatDateRangeFilterEnd",
+     "type": "daterange"
+    },
+    {
+     "label": "Item Status Contains",
+     "condition": "pi.status_code = :itemStatusFilter",
+     "type": "text"
+    }
+   ]
+  },
+  "Invoice": {
+   "label": "Invoice",
+   "anchor_table": "sale_order_item",
+   "anchor_alias": "soi",
+   "from_join_clause": "from sale_order_item soi\nleft join invoice_item invi on invi.id = soi.invoice_item_id\nleft join invoice_item_tax invit on invi.id = invit.invoice_item_id\nleft join invoice inv on inv.id = invi.invoice_id\nleft join shipping_package sp on sp.invoice_id = inv.id\njoin sale_order so on so.id = sp.sale_order_id\njoin item_type it on it.id = invi.item_type_id\njoin category c on it.category_id = c.id\nleft join tax_type tt on (tt.id = it.gst_tax_type_id or tt.id = c.gst_tax_type_id)\nleft join channel ch on ch.id = so.channel_id",
+   "source": "export",
+   "export_name": "Invoice",
+   "fields": [
+    {
+     "label": "Order No",
+     "expr": "so.display_order_code"
+    },
+    {
+     "label": "Invoice No",
+     "expr": "inv.display_code"
+    },
+    {
+     "label": "Shipping Package Code",
+     "expr": "sp.code"
+    },
+    {
+     "label": "Shipping Package Status Code",
+     "expr": "sp.status_code"
+    },
+    {
+     "label": "Invoice Created Date",
+     "expr": "inv.created"
+    },
+    {
+     "label": "Channel Invoice Created Date",
+     "expr": "inv.channel_created"
+    },
+    {
+     "label": "Customer Name",
+     "expr": "so.customer_name"
+    },
+    {
+     "label": "SKU Code",
+     "expr": "it.sku_code"
+    },
+    {
+     "label": "SKU Name",
+     "expr": "it.name"
+    },
+    {
+     "label": "Quantity",
+     "expr": "invi.quantity"
+    },
+    {
+     "label": "Invoice Tax",
+     "expr": "(invit.vat + invit.cst + invit.central_gst + invit.state_gst + invit.integrated_gst)"
+    },
+    {
+     "label": "Invoice Total",
+     "expr": "invi.subtotal + invit.central_gst + invit.integrated_gst + invit.state_gst + invit.vat + invit.cst + invi.shipping_charges + invi.cash_on_delivery_charges"
+    },
+    {
+     "label": "Invoice Cancelled",
+     "expr": "IF( sp.status_code in ('CANCELLED','SPLITTED','MERGED'),'Yes','No')"
+    },
+    {
+     "label": "HSN Code",
+     "expr": "it.hsn_code"
+    },
+    {
+     "label": "GST Tax Type Code",
+     "expr": "tt.code"
+    },
+    {
+     "label": "CGST",
+     "expr": "invit.central_gst"
+    },
+    {
+     "label": "IGST",
+     "expr": "invit.integrated_gst"
+    },
+    {
+     "label": "SGST",
+     "expr": "invit.state_gst"
+    },
+    {
+     "label": "UTGST",
+     "expr": "invit.union_territory_gst"
+    },
+    {
+     "label": "CESS",
+     "expr": "invit.compensation_cess"
+    },
+    {
+     "label": "CGST Rate",
+     "expr": "invit.central_gst_percentage"
+    },
+    {
+     "label": "IGST Rate",
+     "expr": "invit.integrated_gst_percentage"
+    },
+    {
+     "label": "SGST Rate",
+     "expr": "invit.state_gst_percentage"
+    },
+    {
+     "label": "UTGST Rate",
+     "expr": "invit.union_territory_gst_percentage"
+    },
+    {
+     "label": "CESS Rate",
+     "expr": "invit.compensation_cess_percentage"
+    }
+   ],
+   "filters": [
+    {
+     "label": "Created in Date Range",
+     "condition": "inv.created &gt; :dateCreatedRangeStart and inv.created &lt; :dateCreatedRangeEnd",
+     "type": "daterange"
+    },
+    {
+     "label": "Item SkuCode",
+     "condition": "it.sku_code= :itemSkuCode",
+     "type": "text"
+    },
+    {
+     "label": "Channels",
+     "condition": "ch.code in (:channelFilter)",
+     "type": "multiselect"
+    },
+    {
+     "label": "Dispatched in Date Range",
+     "condition": "sp.dispatch_time &gt; :dateDispatchedRangeStart and sp.dispatch_time &lt; :dateDispatchedRangeEnd",
+     "type": "daterange"
+    }
+   ]
+  },
+  "Shipping Manifest": {
+   "label": "Shipping Manifest",
+   "anchor_table": "shipping_manifest_item",
+   "anchor_alias": "smi",
+   "from_join_clause": "from shipping_manifest_item smi\njoin shipping_manifest shm on smi.shipping_manifest_id = shm.id\njoin channel ch on shm.channel_id = ch.id\njoin shipping_package sp on smi.shipping_package_id = sp.id\njoin address_detail ad on ad.id = sp.shipping_address_id\njoin shipping_package_type spt on sp.shipping_package_type_id=spt.id\njoin sale_order so on so.id = sp.sale_order_id\njoin user u on shm.user_id = u.id",
+   "source": "export",
+   "export_name": "Shipping Manifest",
+   "fields": [
+    {
+     "label": "Channel name",
+     "expr": "ch.name"
+    },
+    {
+     "label": "Manifest No",
+     "expr": "shm.code"
+    },
+    {
+     "label": "Manifest Status",
+     "expr": "shm.status_code"
+    },
+    {
+     "label": "Tracking Number",
+     "expr": "smi.tracking_number"
+    },
+    {
+     "label": "Created",
+     "expr": "smi.created"
+    },
+    {
+     "label": "Shipping Provider Name",
+     "expr": "sp.shipping_provider_name"
+    },
+    {
+     "label": "Username",
+     "expr": "u.username"
+    },
+    {
+     "label": "Shipping city",
+     "expr": "ad.city"
+    },
+    {
+     "label": "Shipping Region",
+     "expr": "ad.state_code"
+    },
+    {
+     "label": "Shipping Package Code",
+     "expr": "sp.code"
+    },
+    {
+     "label": "Shipping Package Type",
+     "expr": "spt.code"
+    },
+    {
+     "label": "Length(mm)",
+     "expr": "sp.box_length"
+    },
+    {
+     "label": "Width(mm)",
+     "expr": "sp.box_width"
+    },
+    {
+     "label": "Height(mm)",
+     "expr": "sp.box_height"
+    },
+    {
+     "label": "No Of Products",
+     "expr": "sp.no_of_items"
+    },
+    {
+     "label": "No Of Boxes",
+     "expr": "sp.no_of_boxes"
+    },
+    {
+     "label": "Weight(gm)",
+     "expr": "sp.actual_weight"
+    },
+    {
+     "label": "Shipping Charges",
+     "expr": "sp.shipping_charges"
+    },
+    {
+     "label": "Amount",
+     "expr": "sp.total_price"
+    },
+    {
+     "label": "Comments",
+     "expr": "shm.comments"
+    },
+    {
+     "label": "Shipping Method",
+     "expr": "(select name from shipping_method where id = sp.shipping_method_id)"
+    },
+    {
+     "label": "Updated",
+     "expr": "smi.updated"
+    }
+   ],
+   "filters": [
+    {
+     "label": "Shipping Provider starts with",
+     "condition": "sp.shipping_provider_name like (:shippingProvider)",
+     "type": "text"
+    },
+    {
+     "label": "Added in Date Range",
+     "condition": "smi.created &gt; :dateRangeStart and smi.created &lt; :dateRangeEnd",
+     "type": "daterange"
+    },
+    {
+     "label": "Shipping Method",
+     "condition": "sm.id in (:shippingMethodId)",
+     "type": "multiselect"
+    },
+    {
+     "label": "Updated in Date Range",
+     "condition": "smi.updated &gt; :updatedRangeStart and smi.updated &lt; :updatedRangeEnd",
+     "type": "daterange"
+    }
+   ]
+  },
+  "Box / Packslip": {
+   "label": "Box Packslip Report",
+   "anchor_table": "box_item",
+   "anchor_alias": "bi",
+   "from_join_clause": "from box_item bi\nleft join box b on bi.box_id = b.id\nleft join sale_order_item soi on soi.id = bi.sale_order_item_id\nleft join sale_order so on so.id = soi.sale_order_id\nleft join item_type it on it.id = soi.item_type_id\nleft join shipping_package sp on sp.id = soi.shipping_package_id\nleft join invoice inv on inv.id = sp.invoice_id\nleft join channel ch on ch.id = so.channel_id",
+   "source": "export",
+   "export_name": "Box Packslip Report",
+   "fields": [
+    {
+     "label": "Display Order No",
+     "expr": "so.display_order_code"
+    },
+    {
+     "label": "Sale Order",
+     "expr": "so.code"
+    },
+    {
+     "label": "Channel",
+     "expr": "ch.code"
+    },
+    {
+     "label": "Shipping Package Code",
+     "expr": "sp.code"
+    },
+    {
+     "label": "Sku Code",
+     "expr": "it.sku_code"
+    },
+    {
+     "label": "Channel Product Id",
+     "expr": "soi.channel_product_id"
+    },
+    {
+     "label": "Brand",
+     "expr": "it.brand"
+    },
+    {
+     "label": "HSN Code",
+     "expr": "it.hsn_code"
+    },
+    {
+     "label": "Size",
+     "expr": "it.size"
+    },
+    {
+     "label": "MRP",
+     "expr": "it.max_retail_price"
+    },
+    {
+     "label": "Invoice No",
+     "expr": "inv.code"
+    },
+    {
+     "label": "Box Code",
+     "expr": "b.code"
+    },
+    {
+     "label": "Sale Order Item Code",
+     "expr": "soi.code"
+    }
+   ],
+   "filters": [
+    {
+     "label": "Display Order Code",
+     "condition": "so.display_order_code like :orderCode",
+     "type": "text"
+    },
+    {
+     "label": "Added in Date Range",
+     "condition": "bi.created &gt; :addedOnStart and bi.created &lt; :addedOnEnd",
+     "type": "daterange"
+    },
+    {
+     "label": "Updated in Date Range",
+     "condition": "soi.updated &gt; :addedOn1Start and soi.updated &lt; :addedOn1End",
+     "type": "daterange"
+    }
+   ]
+  },
+  "Gatepass": {
+   "label": "Gatepass",
+   "anchor_table": "outbound_gate_pass_item",
+   "anchor_alias": "ogpi",
+   "from_join_clause": "from outbound_gate_pass_item ogpi\nleft join shelf s on ogpi.shelf_id = s.id\nleft join outbound_gate_pass ogp on ogpi.outbound_gate_pass_id = ogp.id\nleft join gate_pass_order gpo on ogp.gate_pass_order_id = gpo.id\nleft join party p on p.id = ogp.to_party_id\nleft join item_type it on ogpi.item_type_id = it.id\nleft join user u on u.id = ogp.user_id\nLEFT JOIN batch b ON ogpi.batch_id = b.id\nLEFT JOIN party p1 ON ogp.facility_id = p1.id",
+   "source": "export",
+   "export_name": "Gatepass",
+   "fields": [
+    {
+     "label": "Gatepass Code",
+     "expr": "ogp.code"
+    },
+    {
+     "label": "Gatepass Created By",
+     "expr": "u.name"
+    },
+    {
+     "label": "Type",
+     "expr": "ogp.type"
+    },
+    {
+     "label": "Gatepass Status",
+     "expr": "ogp.status_code"
+    },
+    {
+     "label": "Gatepass Created At",
+     "expr": "ogp.created"
+    },
+    {
+     "label": "Gatepass Updated At",
+     "expr": "ogp.updated"
+    },
+    {
+     "label": "Purpose",
+     "expr": "ogp.purpose"
+    },
+    {
+     "label": "Reference",
+     "expr": "ogp.reference_number"
+    },
+    {
+     "label": "To Party",
+     "expr": "p.name"
+    },
+    {
+     "label": "Item Name",
+     "expr": "it.name"
+    },
+    {
+     "label": "Item SkuCode",
+     "expr": "it.sku_code"
+    },
+    {
+     "label": "Color",
+     "expr": "it.color"
+    },
+    {
+     "label": "Size",
+     "expr": "it.size"
+    },
+    {
+     "label": "Brand",
+     "expr": "it.brand"
+    },
+    {
+     "label": "HSN Code",
+     "expr": "it.hsn_code"
+    },
+    {
+     "label": "Unit Price",
+     "expr": "ogpi.unit_price"
+    },
+    {
+     "label": "Quantity",
+     "expr": "ogpi.quantity"
+    },
+    {
+     "label": "Received Quantity",
+     "expr": "ogpi.received_quantity"
+    },
+    {
+     "label": "Inventory Type",
+     "expr": "ogpi.inventory_type"
+    },
+    {
+     "label": "Gatepass Item Status",
+     "expr": "ogpi.status_code"
+    },
+    {
+     "label": "Shelf",
+     "expr": "s.code"
+    },
+    {
+     "label": "Reason",
+     "expr": "ogpi.reason"
+    },
+    {
+     "label": "Gatepass Item Created",
+     "expr": "ogpi.created"
+    },
+    {
+     "label": "Gatepass Item Updated",
+     "expr": "ogpi.updated"
+    },
+    {
+     "label": "Gatepass Order Code",
+     "expr": "gpo.code"
+    }
+   ],
+   "filters": [
+    {
+     "label": "To Party Name Contains",
+     "condition": "p.name like :toPartNameContains",
+     "type": "text"
+    },
+    {
+     "label": "Updated in Date Range",
+     "condition": "ogpi.updated &gt; :updatedOnStart and ogpi.updated &lt; :updatedOnEnd",
+     "type": "daterange"
+    },
+    {
+     "label": "Updated Since (Hours) - Deprecated",
+     "condition": "ogpi.updated &gt; DATE_SUB(:exportExecutionTime, INTERVAL :updatedSince HOUR)",
+     "type": "text"
+    },
+    {
+     "label": "Created Date Range",
+     "condition": "ogpi.created  &gt; :addedOnStart and ogpi.created &lt; :addedOnEnd",
+     "type": "daterange"
+    },
+    {
+     "label": "Gatepass Type Contains",
+     "condition": "ogp.type in :typeFilter",
+     "type": "multiselect"
+    },
+    {
+     "label": "Gatepass Order Filter",
+     "condition": "gpo.id in (:gatePassOrderIds)",
+     "type": "multiselect"
+    }
+   ]
+  },
+  "Inbound Gatepass": {
+   "label": "Inbound GatePass",
+   "anchor_table": "inbound_gate_pass",
+   "anchor_alias": "igp",
+   "from_join_clause": "from inbound_gate_pass igp\njoin facility f on igp.facility_id = f.id\nleft join user u on u.id = igp.user_id\nleft join party p on p.id = igp.party_id",
+   "source": "export",
+   "export_name": "Inbound GatePass",
+   "fields": [
+    {
+     "label": "Code",
+     "expr": "igp.code"
+    },
+    {
+     "label": "Username",
+     "expr": "u.username"
+    },
+    {
+     "label": "Party",
+     "expr": "p.name"
+    },
+    {
+     "label": "Number of Parcels",
+     "expr": "igp.no_of_parcel"
+    },
+    {
+     "label": "Transporter",
+     "expr": "igp.transporter"
+    },
+    {
+     "label": "Tracking Number",
+     "expr": "igp.tracking_number"
+    },
+    {
+     "label": "Reference",
+     "expr": "igp.reference_number"
+    },
+    {
+     "label": "Vehicle Number",
+     "expr": "igp.vehicle_number"
+    },
+    {
+     "label": "Created At",
+     "expr": "igp.created"
+    }
+   ],
+   "filters": [
+    {
+     "label": "Gatepass Entry Code Equals",
+     "condition": "igp.code = :codeFilter",
+     "type": "text"
+    },
+    {
+     "label": "Facility Code Filter",
+     "condition": "p.id in :facilityFilter",
+     "type": "multiselect"
+    },
+    {
+     "label": "Created in Date Range",
+     "condition": "igp.created &gt; :dateRangeFilterStart and igp.created &lt; :dateRangeFilterEnd",
+     "type": "daterange"
+    }
+   ]
+  }
+ },
+ "Reports": {
+  "Transaction Ledger": {
+   "label": "Transaction Ledger",
+   "anchor_table": "inflow_receipt_item",
+   "anchor_alias": "iri",
+   "from_join_clause": "FROM  inflow_receipt_item iri\nJOIN  inflow_receipt ir ON ir.id = iri.inflow_receipt_id\njoin  putaway_entity_mapping pem on pem.inflow_receipt_id = ir.id\njoin  putaway pu on pu.id = pem.putaway_id\nJOIN  putaway_item pi on pu.id = pi.putaway_id\nJOIN  facility f ON f.id = ir.facility_id\nJOIN  item_type it ON it.id = iri.item_type_id\njoin  tenant t ON t.id = it.tenant_id\njoin putaway_entity_mapping pem on pem.outbound_gate_pass_id = ogp.id\njoin putaway pu on pu.id = pem.putaway_id\njoin putaway_item pui on pui.putaway_id = pu.id\nleft JOIN facility in_f ON in_f.id = ogp.to_party_id\nleft JOIN facility out_f ON out_f.id = ogp.facility_id\nJOIN item_type it ON it.id = pui.item_type_id\njoin tenant t ON t.id = it.tenant_id\njoin  sale_order_item soi on soi.id = cri.sale_order_item_id\njoin  item_type it on it.id = soi.item_type_id\njoin  putaway pu on pu.id = cri.putaway_id\njoin  facility f on f.id = pu.facility_id\njoin  tenant t ON t.id = it.tenant_id\nleft join  invoice_item ii on ii.id = soi.return_invoice_item_id\njoin  invoice i on i.id = ii.invoice_id\njoin  reverse_pickup rp on rp.id = rpi.reverse_pickup_id\njoin  sale_order_item soi on soi.id = rpi.sale_order_item_id\njoin  item_type it on it.id = soi.item_type_id\njoin  putaway pu on pu.id = rpi.putaway_id\njoin  facility f on f.id = pu.facility_id\njoin  tenant t ON t.id = it.tenant_id\njoin  putaway pu on pu.id = pi.putaway_id\njoin  item_type it on it.id = pi.item_type_id\njoin  facility f on f.id = pu.facility_id\njoin  tenant t ON t.id = it.tenant_id\njoin  invoice i on ii.invoice_id = i.id\nleft join shipping_package sp on sp.invoice_id = i.id\nleft join picklist_item pi on pi.shipping_package_code = sp.code\nleft join picklist p on (pi.picklist_id = p.id and p.facility_id = i.facility_id)\njoin  item_type it on it.id = ii.item_type_id\njoin  facility f on f.id = i.facility_id\njoin  tenant t ON t.id = it.tenant_id\njoin  facility f on f.id = ia.facility_id\nleft join  party p ON p.id = ia.facility_id\njoin  tenant t ON t.id = p.tenant_id\nJOIN  item_type it ON it.id = ogpi.item_type_id\nJOIN  outbound_gate_pass ogp ON ogp.id = ogpi.outbound_gate_pass_id\nleft join  putaway_entity_mapping pem on pem.outbound_gate_pass_id = ogp.id\nleft join  putaway pu on pu.id = pem.putaway_id\nleft JOIN  facility in_f ON in_f.id = ogp.to_party_id\nleft JOIN  facility out_f ON out_f.id = ogp.facility_id\nleft join  tenant t ON t.id = it.tenant_id\njoin  shipping_package sp on sp.id = soi.shipping_package_id\nJOIN  item_type it ON it.id = soi.item_type_id\nJOIN  item i ON i.id = soi.item_id\nJOIN  facility f ON f.id = soi.facility_id\njoin  tenant t on sp.tenant_id = t.id\nleft join  putaway p on p.id = pi.putaway_id\nleft join  item_type it on it.id = pi.item_type_id\nleft JOIN  facility f ON f.id = p.facility_id\nleft join  tenant t ON t.id = it.tenant_id\nleft join item_type it on iti.item_type_id = it.id\nleft join facility f on f.id = iti.facility_id\nleft join tenant t on t.id = it.tenant_id\nleft join shelf s on s.id = iti.shelf_id\nleft join picklist pl on pli.picklist_id = pl.id\nleft join item_type it on pli.sku_code = it.sku_Code\nleft join shipping_package sp on sp.code = pli.shipping_package_code\nleft join invoice inv on sp.invoice_id = inv.id\nleft join facility f on f.id = pl.facility_id\nleft join tenant t on t.id = it.tenant_id\nleft join putaway pu on pui.putaway_id = pu.id\njoin  item_type it on it.id = pui.item_type_id\njoin  facility f on f.id = pu.facility_id\njoin  tenant t ON t.id = it.tenant_id",
+   "source": "export",
+   "export_name": "Transaction Ledger",
+   "fields": [
+    {
+     "label": "SKU Code",
+     "expr": "X.sku_code"
+    },
+    {
+     "label": "SKU Name",
+     "expr": "X.sku_name"
+    },
+    {
+     "label": "Entity",
+     "expr": "X.entity"
+    },
+    {
+     "label": "Entity Type",
+     "expr": "X.entity_type"
+    },
+    {
+     "label": "Entity Code",
+     "expr": "X.entity_code"
+    },
+    {
+     "label": "Entity Status",
+     "expr": "X.entity_status"
+    },
+    {
+     "label": "From Facility",
+     "expr": "X.from_facility_name"
+    },
+    {
+     "label": "To Facility",
+     "expr": "X.to_facility_name"
+    },
+    {
+     "label": "Units",
+     "expr": "X.units"
+    },
+    {
+     "label": "Inventory Updated At",
+     "expr": "X.inventory_updated_at"
+    },
+    {
+     "label": "Putaway Codes",
+     "expr": "X.putaway_codes"
+    },
+    {
+     "label": "Transaction Type",
+     "expr": "X.transaction_type"
+    }
+   ],
+   "filters": [
+    {
+     "label": "Added in Date Range",
+     "condition": "(X.inventory_updated_at &gt;= :addedOnStart and X.inventory_updated_at &lt; :addedOnEnd and X.entity = 'GRN') or (X.inventory_updated_at &gt;= :addedOnStart and X.inventory_updated_at &lt; :addedOnEnd and X.entity = 'INBOUND_GATEPASS') or (X.inventory_updated_at &gt;= :addedOnStart and X.inventory_updated_at &lt; :addedOnEnd and X.entity = 'PUTAWAY_RTO') or (X.inventory_updated_at &gt;= :addedOnStart and X.inventory_updated_at &lt; :addedOnEnd and X.entity = 'PUTAWAY_CIR') or (X.inventory_updated_at &gt;= :addedOnStart and X.inventory_updated_at &lt; :addedOnEnd and X.entity = 'PUTAWAY_CANCELLED_ITEM') or (X.inventory_updated_at &gt;= :addedOnStart and X.inventory_updated_at &lt; :addedOnEnd and X.entity = 'INVOICES') or (X.inventory_updated_at &gt;= :addedOnStart and X.inventory_updated_at &lt; :addedOnEnd and X.entity = 'INVENTORY_ADJUSTMENT') or (X.inventory_updated_at &gt;= :addedOnStart and X.inventory_updated_at &lt; :addedOnEnd and X.entity = 'OUTBOUND_GATEPASS') or (X.inventory_updated_at &gt;= :addedOnStart and X.inventory_updated_at &lt; :addedOnEnd and X.entity = 'BARCODED_UNINVOICED_SOI') or (X.inventory_updated_at &gt;= :addedOnStart and X.inventory_updated_at &lt; :addedOnEnd and X.entity = 'PARTIAL_PUTAWAYS') or (X.inventory_updated_at &gt;= :addedOnStart and X.inventory_updated_at &lt; :addedOnEnd and X.entity = 'Not Found') or (X.inventory_updated_at &gt;= :addedOnStart and X.inventory_updated_at &lt; :addedOnEnd and X.entity = 'PICKLIST') or (X.inventory_updated_at &gt;= :addedOnStart and X.inventory_updated_at &lt; :addedOnEnd and X.entity = 'PUTAWAY_PICKLIST_ITEM')",
+     "type": "daterange"
+    }
+   ]
+  },
+  "HSN Summary Report": {
+   "label": "HSN Summary Report",
+   "anchor_table": "invoice_item",
+   "anchor_alias": "invi",
+   "from_join_clause": "from invoice_item invi\njoin invoice_item_tax invit on invi.id = invit.invoice_item_id\nleft join invoice inv on inv.id = invi.invoice_id\nleft join shipping_package sp on sp.invoice_id = inv.id\nleft join item_type it on invi.`item_type_id` = it.`id`\nleft join tax_type tt on tt.id = it.gst_tax_type_id",
+   "source": "export",
+   "export_name": "HSN Summary Report",
+   "fields": [
+    {
+     "label": "HSN CODE",
+     "expr": "it.hsn_code"
+    },
+    {
+     "label": "Rate of Tax",
+     "expr": "tt.code"
+    },
+    {
+     "label": "Sum of Qty",
+     "expr": "sum(invi.quantity)"
+    },
+    {
+     "label": "Sum of Invoice Value",
+     "expr": "(sum(invi.subtotal) + sum(invit.integrated_gst) + sum(invit.central_gst) + sum(invit.state_gst) + sum(invit.compensation_cess) + sum(invit.union_territory_gst) + sum(invi.shipping_charges) + sum(invi.cash_on_delivery_charges))"
+    },
+    {
+     "label": "Sum of Sales",
+     "expr": "sum(invi.subtotal)"
+    },
+    {
+     "label": "Sum of IGST",
+     "expr": "sum(invit.integrated_gst)"
+    },
+    {
+     "label": "Sum of CGST",
+     "expr": "sum(invit.central_gst)"
+    },
+    {
+     "label": "Sum of SGST",
+     "expr": "sum(invit.state_gst)"
+    }
+   ],
+   "filters": [
+    {
+     "label": "Created in Date Range",
+     "condition": "inv.created &gt; :addedOnStart and inv.created &lt; :addedOnEnd",
+     "type": "daterange"
+    }
+   ]
+  },
+  "Sales Forecast Report": {
+   "label": "Sales Forecast Report",
+   "anchor_table": "sale_order_item",
+   "anchor_alias": "soi",
+   "from_join_clause": "from sale_order_item soi\njoin item_type it on ( it.tenant_id = :tenantId and soi.item_type_id = it.id\njoin category c on it.category_id = c.id\njoin item_type_inventory_snapshot itis on itis.item_type_id = it.id",
+   "source": "export",
+   "export_name": "Sales Forecast Report",
+   "fields": [
+    {
+     "label": "Item Name",
+     "expr": "it.name"
+    },
+    {
+     "label": "Item SkuCode",
+     "expr": "it.sku_code"
+    },
+    {
+     "label": "Item Category",
+     "expr": "c.name"
+    },
+    {
+     "label": "Item Created",
+     "expr": "DATEDIFF(now(),it.created)"
+    },
+    {
+     "label": "Item Created",
+     "expr": "COUNT(soi.id)"
+    },
+    {
+     "label": "Stock in Hand",
+     "expr": "itis.inventory"
+    }
+   ],
+   "filters": [
+    {
+     "label": "Last X Days (default 21 days)",
+     "condition": "1=1",
+     "type": "text"
+    }
+   ]
+  },
+  "Aggregate Sales Report": {
+   "label": "Aggregate Sales Report",
+   "anchor_table": "sale_order_item",
+   "anchor_alias": "soi",
+   "from_join_clause": "FROM sale_order_item soi\njoin sale_order so on soi.sale_order_id = so.id\nleft join address_detail ad2 on so.billing_address_id = ad2.id\nleft join state s1 on s1.iso2_code = ad2.state_code and s1.country_code = ad2.country_code\nleft join item_type it on soi.item_type_id = it.id\nleft join tax_type tt on tt.id = it.gst_tax_type_id\nleft join shipping_package sp on soi.shipping_package_id = sp.id\nleft join invoice inv on inv.id=sp.invoice_id\nleft join invoice_item invt on invt.id = soi.invoice_item_id\nleft join facility f on soi.facility_id = f.id\nleft join party pf on f.id = pf.id\nleft join channel ch on so.channel_id = ch.id",
+   "source": "export",
+   "export_name": "Aggregate Sales Report",
+   "fields": [
+    {
+     "label": "facility Name",
+     "expr": "pf.code"
+    },
+    {
+     "label": "Channel Name",
+     "expr": "ch.name"
+    },
+    {
+     "label": "Billing Address State",
+     "expr": "s1.name"
+    },
+    {
+     "label": "Item SKU Code",
+     "expr": "it.sku_code"
+    },
+    {
+     "label": "MRP",
+     "expr": "it.max_retail_price"
+    },
+    {
+     "label": "GST Tax Type Code",
+     "expr": "tt.code"
+    },
+    {
+     "label": "Sale Order Item Code",
+     "expr": "count(distinct soi.code)"
+    },
+    {
+     "label": "Total Price",
+     "expr": "sum(soi.selling_price + soi.shipping_charges + soi.cash_on_delivery_charges)"
+    },
+    {
+     "label": "SGST",
+     "expr": "(select sum(state_gst/invt.quantity) from invoice_item_tax  where invt.id = invoice_item_id)"
+    },
+    {
+     "label": "Selling Price",
+     "expr": "sum(soi.selling_price)"
+    },
+    {
+     "label": "Cost Price",
+     "expr": "sum(soi.cost_price)"
+    },
+    {
+     "label": "Subtotal",
+     "expr": "sum((invt.subtotal + invt.discount)/invt.quantity)"
+    },
+    {
+     "label": "Discount",
+     "expr": "sum(soi.discount)"
+    },
+    {
+     "label": "CGST",
+     "expr": "(select sum(central_gst/invt.quantity) from invoice_item_tax where  invt.id = invoice_item_id)"
+    },
+    {
+     "label": "IGST",
+     "expr": "(select sum(integrated_gst/invt.quantity) from invoice_item_tax  where invt.id = invoice_item_id)"
+    },
+    {
+     "label": "Shipping Charges",
+     "expr": "sum(soi.shipping_charges)"
+    }
+   ],
+   "filters": [
+    {
+     "label": "Invoiced in Date Range",
+     "condition": "inv.created &gt; :invoicedOnStart and inv.created &lt; :invoicedOnEnd",
+     "type": "daterange"
+    }
+   ]
+  }
+ },
+ "Cycle Count": {
+  "Cycle Count Overall Data": {
+   "label": "Cycle Count Overall Data",
+   "anchor_table": "cycle_count_item",
+   "anchor_alias": "cci",
+   "from_join_clause": "from cycle_count_item cci\njoin cycle_count_shelf_summary ccss on cci.cycle_count_shelf_summary_id=ccss.id\njoin user u on ccss.user_id=u.id\njoin sub_cycle_count scc on ccss.sub_cycle_count_id=scc.id\njoin cycle_count cc on scc.cycle_count_id=cc.id\njoin shelf s on ccss.shelf_id=s.id\njoin item_type it on it.sku_code=cci.sku_code\njoin vendor_item_type vit on it.id=vit.item_type_id\njoin party p on vit.vendor_id=p.id\njoin vendor v on p.id=v.id",
+   "source": "export",
+   "export_name": "Cycle Count Overall Data",
+   "fields": [
+    {
+     "label": "Discarded",
+     "expr": "cci.discarded"
+    },
+    {
+     "label": "Shelf Code",
+     "expr": "s.code"
+    },
+    {
+     "label": "Product Name",
+     "expr": "cci.item_type_name"
+    },
+    {
+     "label": "Seller",
+     "expr": "p.name"
+    },
+    {
+     "label": "Sku Code",
+     "expr": "cci.sku_code"
+    },
+    {
+     "label": "Expected Inventory",
+     "expr": "cci.expected_inventory"
+    },
+    {
+     "label": "Inventory Found",
+     "expr": "cci.expected_inventory + cci.inventory_difference"
+    },
+    {
+     "label": "Extra",
+     "expr": "if(cci.inventory_difference&gt;0,inventory_difference,0)"
+    },
+    {
+     "label": "Extra Reconciled",
+     "expr": "if(cci.inventory_difference&gt;0,inventory_difference - pending_reconciliation,0)"
+    },
+    {
+     "label": "Net Extra",
+     "expr": "if(cci.inventory_difference&gt;0,pending_reconciliation,0)"
+    },
+    {
+     "label": "Missing",
+     "expr": "if(cci.inventory_difference&lt;0,abs(cci.inventory_difference),0)"
+    },
+    {
+     "label": "Missing Reconciled",
+     "expr": "if(cci.inventory_difference&lt;0,abs(cci.inventory_difference) - pending_reconciliation,0)"
+    },
+    {
+     "label": "Net Missing",
+     "expr": "if(cci.inventory_difference&lt;0,pending_reconciliation,0)"
+    },
+    {
+     "label": "Username",
+     "expr": "u.username"
+    },
+    {
+     "label": "Created",
+     "expr": "cci.created"
+    }
+   ],
+   "filters": [
+    {
+     "label": "Item Type Name like",
+     "condition": "(cci.item_type_name like :itemTypeNameFilter)",
+     "type": "text"
+    },
+    {
+     "label": "SUPC equals",
+     "condition": "(cci.sku_code = :skuCodeFilter)",
+     "type": "text"
+    },
+    {
+     "label": "Shelf Code equals",
+     "condition": "(s.code = :shelfCodeFilter)",
+     "type": "text"
+    },
+    {
+     "label": "Cycle Count Code equals",
+     "condition": "(cc.code = :cycleCountCodeFilter)",
+     "type": "text"
+    },
+    {
+     "label": "Missing Filter",
+     "condition": "cci.inventory_difference&lt;0",
+     "type": "boolean"
+    },
+    {
+     "label": "Extra Filter",
+     "condition": "cci.inventory_difference&gt;0",
+     "type": "boolean"
+    }
+   ]
+  },
+  "Cycle Count Report": {
+   "label": "CYCLE_COUNT_REPORT",
+   "anchor_table": "cycle_count",
+   "anchor_alias": "c",
+   "from_join_clause": "from cycle_count c\nleft join sub_cycle_count scc on scc.cycle_count_id = c.id\nleft join cycle_count_shelf_summary ccss on ccss.sub_cycle_count_id = scc.id\nleft join shelf s on s.id = ccss.shelf_id\nleft join user u on ccss.user_id = u.id",
+   "source": "export",
+   "export_name": "CYCLE_COUNT_REPORT",
+   "fields": [
+    {
+     "label": "Cycle Count Code",
+     "expr": "c.code"
+    },
+    {
+     "label": "Sub Cycle Count Code",
+     "expr": "scc.code"
+    },
+    {
+     "label": "Shelf Code",
+     "expr": "s.code"
+    },
+    {
+     "label": "Shelf Code Status",
+     "expr": "s.status_code"
+    },
+    {
+     "label": "Item Codes",
+     "expr": "ccss.item_codes"
+    },
+    {
+     "label": "Updated",
+     "expr": "c.updated"
+    },
+    {
+     "label": "Shelf updated",
+     "expr": "case when ccss.active = 0 then ccss.updated else '' end "
+    },
+    {
+     "label": "User",
+     "expr": "u.username"
+    }
+   ],
+   "filters": [
+    {
+     "label": "Sub Cycle Count Code",
+     "condition": "scc.code= :subcycle",
+     "type": "text"
+    },
+    {
+     "label": "Cycle Count Status Code",
+     "condition": "c.status_code in :statuscode",
+     "type": "multiselect"
+    }
+   ]
+  },
+  "Shelf Report": {
+   "label": "Shelf Report",
+   "anchor_table": "shelf",
+   "anchor_alias": "sh",
+   "from_join_clause": "from shelf sh\nleft join shelf_type sht on sh.shelf_type_id = sht.id\nleft join section sec on sh.section_id = sec.id\nleft join pick_set ps on ps.id = sec.pick_set_id",
+   "source": "export",
+   "export_name": "Shelf Report",
+   "fields": [
+    {
+     "label": "Shelf Code",
+     "expr": "sh.code"
+    },
+    {
+     "label": "Shelf Type Code",
+     "expr": "sht.code"
+    },
+    {
+     "label": "Section Code",
+     "expr": "sec.code"
+    },
+    {
+     "label": "Enabled",
+     "expr": "sht.enabled"
+    },
+    {
+     "label": "Shelf Status Code",
+     "expr": "sh.status_code"
+    },
+    {
+     "label": "Zone",
+     "expr": "ps.name"
+    },
+    {
+     "label": "Inventory Allocation",
+     "expr": "sh.enabled_for_inventory_allocation"
+    },
+    {
+     "label": "Inventory Sync",
+     "expr": "sh.enabled_for_inventory_sync"
+    },
+    {
+     "label": "Sku Mixing",
+     "expr": "sh.enabled_for_sku_mixing"
+    },
+    {
+     "label": "Shelf on Hold",
+     "expr": "sh.on_hold"
+    }
+   ],
+   "filters": [
+    {
+     "label": "Shelf Type Code Contains",
+     "condition": "sht.code like :codeFilter",
+     "type": "text"
+    },
+    {
+     "label": "Is Enabled",
+     "condition": "sht.enabled = :enabledFilter",
+     "type": "boolean"
+    },
+    {
+     "label": "Zone Name Contains",
+     "condition": "ps.name like :zoneFilter",
+     "type": "text"
+    },
+    {
+     "label": "Section Code Contains",
+     "condition": "sec.code like :sectionFilter",
+     "type": "text"
+    },
+    {
+     "label": "Inventory Allocation",
+     "condition": "sh.enabled_for_inventory_allocation=:enabledForInventoryAllocationFilter",
+     "type": "boolean"
+    },
+    {
+     "label": "Inventory Sync",
+     "condition": "sh.enabled_for_inventory_sync=:enabledForInventorySyncFilter",
+     "type": "boolean"
+    },
+    {
+     "label": "Sku Mixing",
+     "condition": "sh.enabled_for_sku_mixing=:enabledForSkuMixingFilter",
+     "type": "boolean"
+    },
+    {
+     "label": "Shelf on hold",
+     "condition": "sh.on_hold=:enabledForShelfHoldFilter",
+     "type": "boolean"
+    }
+   ]
+  }
+ }
+}

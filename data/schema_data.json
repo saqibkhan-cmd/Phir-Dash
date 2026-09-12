@@ -30419,6 +30419,38 @@
  },
  "relationships": [
   {
+   "from_table": "channel_source_data",
+   "from_column": "channel_source_code",
+   "to_table": "channel",
+   "to_column": "source_code",
+   "confidence": "verified",
+   "method": "manual (confirmed via export-config query)"
+  },
+  {
+   "from_table": "reshipment",
+   "from_column": "action_code",
+   "to_table": "reshipment_action",
+   "to_column": "code",
+   "confidence": "verified",
+   "method": "manual (confirmed via export-config query)"
+  },
+  {
+   "from_table": "reverse_pickup",
+   "from_column": "action_code",
+   "to_table": "reverse_pickup_action",
+   "to_column": "code",
+   "confidence": "verified",
+   "method": "manual (confirmed via export-config query)"
+  },
+  {
+   "from_table": "picklist",
+   "from_column": "picker",
+   "to_table": "user",
+   "to_column": "id",
+   "confidence": "verified",
+   "method": "manual (confirmed via export-config query)"
+  },
+  {
    "from_table": "access_pattern",
    "from_column": "access_resource_id",
    "to_table": "access_resource",
@@ -30809,6 +30841,14 @@
    "to_column": "id",
    "confidence": "high",
    "method": "direct"
+  },
+  {
+   "from_table": "category",
+   "from_column": "gst_tax_type_id",
+   "to_table": "tax_type",
+   "to_column": "id",
+   "confidence": "verified",
+   "method": "manual"
   },
   {
    "from_table": "category_section_mapping",
@@ -32844,6 +32884,14 @@
   },
   {
    "from_table": "item_type",
+   "from_column": "gst_tax_type_id",
+   "to_table": "tax_type",
+   "to_column": "id",
+   "confidence": "verified",
+   "method": "manual"
+  },
+  {
+   "from_table": "item_type",
    "from_column": "batch_group_id",
    "to_table": "batch_group",
    "to_column": "id",
@@ -34323,6 +34371,14 @@
    "method": "direct"
   },
   {
+   "from_table": "reshipment",
+   "from_column": "reshipment_sale_order_id",
+   "to_table": "sale_order",
+   "to_column": "id",
+   "confidence": "verified",
+   "method": "manual"
+  },
+  {
    "from_table": "return_item",
    "from_column": "tenant_id",
    "to_table": "tenant",
@@ -34601,6 +34657,14 @@
    "to_column": "id",
    "confidence": "high",
    "method": "direct"
+  },
+  {
+   "from_table": "reverse_pickup",
+   "from_column": "replacement_sale_order_id",
+   "to_table": "sale_order",
+   "to_column": "id",
+   "confidence": "low",
+   "method": "fuzzy-role-strip"
   },
   {
    "from_table": "reverse_pickup",
@@ -35324,6 +35388,14 @@
   },
   {
    "from_table": "shipping_package",
+   "from_column": "courier_return_putaway_id",
+   "to_table": "putaway",
+   "to_column": "id",
+   "confidence": "verified",
+   "method": "manual"
+  },
+  {
+   "from_table": "shipping_package",
    "from_column": "return_facility_id",
    "to_table": "facility",
    "to_column": "id",
@@ -35545,6 +35617,22 @@
    "to_column": "id",
    "confidence": "high",
    "method": "direct"
+  },
+  {
+   "from_table": "sku_tax_class_mapping",
+   "from_column": "old_gst_tax_type_id",
+   "to_table": "tax_type",
+   "to_column": "id",
+   "confidence": "low",
+   "method": "fuzzy-role-strip"
+  },
+  {
+   "from_table": "sku_tax_class_mapping",
+   "from_column": "new_gst_tax_type_id",
+   "to_table": "tax_type",
+   "to_column": "id",
+   "confidence": "low",
+   "method": "fuzzy-role-strip"
   },
   {
    "from_table": "sku_tax_class_mapping",
@@ -35833,6 +35921,14 @@
    "to_column": "id",
    "confidence": "high",
    "method": "direct"
+  },
+  {
+   "from_table": "user_history",
+   "from_column": "requested_facility_id",
+   "to_table": "facility",
+   "to_column": "id",
+   "confidence": "low",
+   "method": "fuzzy-role-strip"
   },
   {
    "from_table": "user_role",
@@ -36849,9 +36945,18 @@
    "from_column": "id",
    "to_table": "party",
    "to_column": "id",
-   "confidence": "low",
+   "confidence": "verified",
    "method": "shared_pk_inheritance",
-   "note": "inferred from the same pattern as facility/vendor - not yet confirmed by a real query"
+   "note": "confirmed via export-config queries (JOIN party p ON customer.id = p.id, seen 41 times)"
+  },
+  {
+   "from_table": "billing_party",
+   "from_column": "id",
+   "to_table": "party",
+   "to_column": "id",
+   "confidence": "verified",
+   "method": "shared_pk_inheritance",
+   "note": "confirmed via export-config query: JOIN party p ON billing_party.id = p.id"
   }
  ],
  "composite_relationships": [
@@ -36880,6 +36985,48 @@
    "confidence": "verified",
    "method": "manual (confirmed via sample query)",
    "note": "batch_id uses MySQL null-safe equals (<=>) since batch_id can be NULL"
+  },
+  {
+   "tables": [
+    "address_detail",
+    "state"
+   ],
+   "conditions": [
+    {
+     "left_col": "state_code",
+     "op": "=",
+     "right_col": "iso2_code"
+    },
+    {
+     "left_col": "country_code",
+     "op": "=",
+     "right_col": "country_code"
+    }
+   ],
+   "confidence": "verified",
+   "method": "manual (confirmed via export-config queries, seen 82 times)",
+   "note": "state is looked up by (iso2_code, country_code) pair, not a single state_id"
+  },
+  {
+   "tables": [
+    "party_address",
+    "state"
+   ],
+   "conditions": [
+    {
+     "left_col": "state_code",
+     "op": "=",
+     "right_col": "iso2_code"
+    },
+    {
+     "left_col": "country_code",
+     "op": "=",
+     "right_col": "country_code"
+    }
+   ],
+   "confidence": "verified",
+   "method": "manual (confirmed via export-config queries, seen 17 times)",
+   "note": "same pattern as address_detail -> state"
   }
  ],
  "polymorphic_relationships": [
@@ -36986,12 +37133,6 @@
    "reason": "no matching table for stem \"carton\""
   },
   {
-   "from_table": "category",
-   "from_column": "gst_tax_type_id",
-   "candidates": [],
-   "reason": "no matching table for stem \"gst_tax_type\""
-  },
-  {
    "from_table": "channel_item_inventory_snapshot",
    "from_column": "thread_id",
    "candidates": [],
@@ -37068,12 +37209,6 @@
    "from_column": "last_cycle_count_id",
    "candidates": [],
    "reason": "no matching table for stem \"last_cycle_count\""
-  },
-  {
-   "from_table": "item_type",
-   "from_column": "gst_tax_type_id",
-   "candidates": [],
-   "reason": "no matching table for stem \"gst_tax_type\""
   },
   {
    "from_table": "item_type_inventory",
@@ -37220,22 +37355,10 @@
    "reason": "no matching table for stem \"thread\""
   },
   {
-   "from_table": "reshipment",
-   "from_column": "reshipment_sale_order_id",
-   "candidates": [],
-   "reason": "no matching table for stem \"reshipment_sale_order\""
-  },
-  {
    "from_table": "reverse_pickup",
    "from_column": "pickup_address_id",
    "candidates": [],
    "reason": "no matching table for stem \"pickup_address\""
-  },
-  {
-   "from_table": "reverse_pickup",
-   "from_column": "replacement_sale_order_id",
-   "candidates": [],
-   "reason": "no matching table for stem \"replacement_sale_order\""
   },
   {
    "from_table": "reverse_pickup",
@@ -37274,24 +37397,6 @@
    "reason": "no matching table for stem \"return_delivery_challan\""
   },
   {
-   "from_table": "shipping_package",
-   "from_column": "courier_return_putaway_id",
-   "candidates": [],
-   "reason": "no matching table for stem \"courier_return_putaway\""
-  },
-  {
-   "from_table": "sku_tax_class_mapping",
-   "from_column": "old_gst_tax_type_id",
-   "candidates": [],
-   "reason": "no matching table for stem \"old_gst_tax_type\""
-  },
-  {
-   "from_table": "sku_tax_class_mapping",
-   "from_column": "new_gst_tax_type_id",
-   "candidates": [],
-   "reason": "no matching table for stem \"new_gst_tax_type\""
-  },
-  {
    "from_table": "snapshot_inventory_mismatch",
    "from_column": "itis_id",
    "candidates": [],
@@ -37326,12 +37431,6 @@
    "from_column": "request_id",
    "candidates": [],
    "reason": "no matching table for stem \"request\""
-  },
-  {
-   "from_table": "user_history",
-   "from_column": "requested_facility_id",
-   "candidates": [],
-   "reason": "no matching table for stem \"requested_facility\""
   }
  ],
  "starter_tables": [

@@ -152,62 +152,71 @@
   "schemas": [
    "ECloud1"
   ],
-  "note": "Dedicated server, one schema named ECloud<N> matching the replica number"
+  "note": "Business/display name is ECloud<N>, but the actual SQL schema is always \"uniware\" (single-tenant DB naming convention)",
+  "sql_schema_override": "uniware"
  },
  "ReplicaECloud2": {
   "type": "dedicated_single_schema",
   "schemas": [
    "ECloud2"
   ],
-  "note": "Dedicated server, one schema named ECloud<N> matching the replica number"
+  "note": "Business/display name is ECloud<N>, but the actual SQL schema is always \"uniware\" (single-tenant DB naming convention)",
+  "sql_schema_override": "uniware"
  },
  "ReplicaECloud3": {
   "type": "dedicated_single_schema",
   "schemas": [
    "ECloud3"
   ],
-  "note": "Dedicated server, one schema named ECloud<N> matching the replica number"
+  "note": "Business/display name is ECloud<N>, but the actual SQL schema is always \"uniware\" (single-tenant DB naming convention)",
+  "sql_schema_override": "uniware"
  },
  "ReplicaECloud4": {
   "type": "dedicated_single_schema",
   "schemas": [
    "ECloud4"
   ],
-  "note": "Dedicated server, one schema named ECloud<N> matching the replica number"
+  "note": "Business/display name is ECloud<N>, but the actual SQL schema is always \"uniware\" (single-tenant DB naming convention)",
+  "sql_schema_override": "uniware"
  },
  "ReplicaECloud5": {
   "type": "dedicated_single_schema",
   "schemas": [
    "ECloud5"
   ],
-  "note": "Dedicated server, one schema named ECloud<N> matching the replica number"
+  "note": "Business/display name is ECloud<N>, but the actual SQL schema is always \"uniware\" (single-tenant DB naming convention)",
+  "sql_schema_override": "uniware"
  },
  "ReplicaECloud6": {
   "type": "dedicated_single_schema",
   "schemas": [
    "ECloud6"
   ],
-  "note": "Dedicated server, one schema named ECloud<N> matching the replica number"
+  "note": "Business/display name is ECloud<N>, but the actual SQL schema is always \"uniware\" (single-tenant DB naming convention)",
+  "sql_schema_override": "uniware"
  },
  "ReplicaECloud7": {
   "type": "dedicated_single_schema",
   "schemas": [
    "ECloud7"
   ],
-  "note": "Dedicated server, one schema named ECloud<N> matching the replica number"
+  "note": "Business/display name is ECloud<N>, but the actual SQL schema is always \"uniware\" (single-tenant DB naming convention)",
+  "sql_schema_override": "uniware"
  },
  "ReplicaECloud8": {
   "type": "dedicated_single_schema",
   "schemas": [
    "ECloud8"
   ],
-  "note": "Dedicated server, one schema named ECloud<N> matching the replica number"
+  "note": "Business/display name is ECloud<N>, but the actual SQL schema is always \"uniware\" (single-tenant DB naming convention)",
+  "sql_schema_override": "uniware"
  },
  "ReplicaECloud9": {
   "type": "dedicated_single_schema",
   "schemas": [
    "ECloud9"
   ],
-  "note": "Dedicated server, one schema named ECloud<N> matching the replica number"
+  "note": "Business/display name is ECloud<N>, but the actual SQL schema is always \"uniware\" (single-tenant DB naming convention)",
+  "sql_schema_override": "uniware"
  }
 }
