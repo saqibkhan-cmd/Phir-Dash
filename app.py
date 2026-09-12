@@ -1,519 +1,243 @@
 """
-Uniware Redash Query Builder
-----------------------------
-A no-LLM, pure-Python Streamlit tool that lets a non-SQL user pick a
-starting table, discover related tables from an inferred relationship
-map, choose fields/filters, and get a working SQL query generated for
-them.
+Phir-Dash - unified investigation UI
+-------------------------------------
+One app for both a newcomer CSM/TAM analyst and an expert Redash/SQL user:
 
-Data source: data/schema_data.json — produced offline from a Redash
-"SHOW COLUMNS"-style schema export by build_schema_data.py. That script
-infers table relationships from `<name>_id` column naming conventions.
-Relationships are tagged with a confidence level:
-    verified -> manually confirmed
-    high     -> direct name match to an existing table (col stem == table name)
-    low      -> resolved by stripping a role prefix (parent_/return_/etc.) —
-                worth double-checking with a real query before trusting.
-Anything the script couldn't resolve lands in `ambiguous` for manual review.
+  1. Pick a Cloud (Replica is looked up automatically - no need to know it).
+  2. Pick a Major category -> Sub-category (or "Advanced / Custom Table" for
+     picking any of the 377 tables directly - the expert path, in the same
+     screen, not a separate app).
+  3. Check the fields/filters you want. The query previews live as you
+     check boxes - no submit button needed.
+  4. "Add this selection" locks it into your running list at the top
+     (editable/removable). Add as many categories as you need.
+  5. "Generate Final Query" stitches everything into one query - but only
+     across categories that have a *verified* relationship between them.
+     If two selections don't have one, they're returned as separate
+     queries rather than forced together into something baseless.
 
-Run with:  streamlit run app.py
+Every field/filter shown for the 13 taxonomy categories comes from a real
+production Redash export config (data/business_vocabulary.json / built by
+build_taxonomy.py) - nothing here is guessed. "Advanced / Custom Table"
+covers everything else via the same relationship engine, for open-ended
+investigation.
+
+Run with: streamlit run app.py
 """
-
 import json
-import re
+import html
 from pathlib import Path
-from collections import defaultdict
 
 import streamlit as st
 
-DATA_PATH = Path(__file__).parent / "data" / "schema_data.json"
-REPLICA_MAP_PATH = Path(__file__).parent / "data" / "replica_map.json"
+from query_engine import (
+    build_combined_query, build_block_subquery, qualify_from_join_clause,
+    substitute_filter_tokens, extract_tokens, find_relationship, find_composite,
+)
 
-st.set_page_config(page_title="Redash Query Builder", layout="wide")
+DATA_DIR = Path(__file__).parent / "data"
 
-
-# ---------------------------------------------------------------------------
-# Data loading
-# ---------------------------------------------------------------------------
-@st.cache_data
-def load_schema():
-    with open(DATA_PATH) as f:
-        data = json.load(f)
-    return data
+st.set_page_config(page_title="Phir-Dash", layout="wide")
 
 
 @st.cache_data
-def load_replica_map():
-    with open(REPLICA_MAP_PATH) as f:
+def load_json(name):
+    with open(DATA_DIR / name) as f:
         return json.load(f)
 
 
+SCHEMA_DATA = load_json("schema_data.json")
+TABLES = SCHEMA_DATA["tables"]
+RELATIONSHIPS = SCHEMA_DATA["relationships"]
+COMPOSITE_RELATIONSHIPS = SCHEMA_DATA.get("composite_relationships", [])
+REPLICA_MAP = load_json("replica_map.json")
+TAXONOMY = load_json("taxonomy.json")
+
+ADVANCED_LABEL = "Advanced / Custom Table"
+MAJOR_CATEGORIES = list(TAXONOMY.keys()) + [ADVANCED_LABEL]
+
+
 @st.cache_data
-def build_relationship_index(relationships):
-    """Build table -> list of relationship dicts, for both directions."""
-    outgoing = defaultdict(list)   # table -> [rel where table is from_table]
-    incoming = defaultdict(list)   # table -> [rel where table is to_table]
-    for r in relationships:
-        outgoing[r["from_table"]].append(r)
-        incoming[r["to_table"]].append(r)
-    return outgoing, incoming
+def build_cloud_index(replica_map):
+    index = {}
+    for replica, info in replica_map.items():
+        for schema in info["schemas"]:
+            index[schema] = {
+                "replica": replica,
+                "type": info["type"],
+                "sql_schema": info.get("sql_schema_override", schema),
+            }
+    return index
 
 
-schema = load_schema()
-REPLICA_MAP = load_replica_map()
-TABLES = schema["tables"]
-RELATIONSHIPS = schema["relationships"]
-COMPOSITE_RELATIONSHIPS = schema.get("composite_relationships", [])
-POLYMORPHIC_RELATIONSHIPS = schema.get("polymorphic_relationships", [])
-AMBIGUOUS = schema["ambiguous"]
-STARTER_TABLES = schema.get("starter_tables", [])
-OUTGOING, INCOMING = build_relationship_index(RELATIONSHIPS)
-
-ALL_TABLE_NAMES = sorted(TABLES.keys())
-
-CONFIDENCE_ORDER = {"verified": 0, "high": 1, "low": 2}
-CONFIDENCE_LABEL = {
-    "verified": "✅ verified",
-    "high": "🟢 high confidence",
-    "low": "🟡 needs verification",
-}
-
-OPERATORS = ["=", "!=", ">", ">=", "<", "<=", "LIKE", "IN", "IS NULL", "IS NOT NULL", "BETWEEN"]
+CLOUD_INDEX = build_cloud_index(REPLICA_MAP)
+ALL_CLOUDS = sorted(CLOUD_INDEX.keys())
 
 
-# ---------------------------------------------------------------------------
-# Session state
-# ---------------------------------------------------------------------------
 def init_state():
-    st.session_state.setdefault("query_tables", [])       # ordered list of table names in the query
-    st.session_state.setdefault("joins", [])               # list of dicts: {left, left_col, right, right_col, confidence}
-    st.session_state.setdefault("selected_fields", {})      # table -> list[str columns]
-    st.session_state.setdefault("filters", [])              # list of dicts: {table, column, operator, value}
-    st.session_state.setdefault("replica", list(REPLICA_MAP.keys())[0])
-    first_replica_schemas = REPLICA_MAP[st.session_state["replica"]]["schemas"]
-    st.session_state.setdefault("cloud_schema", first_replica_schemas[0] if first_replica_schemas else "")
+    st.session_state.setdefault("blocks", [])
+    st.session_state.setdefault("draft_major", MAJOR_CATEGORIES[0])
+    st.session_state.setdefault("final_result", None)
 
 
 init_state()
 
-
-def col_names(table):
-    return [c["name"] for c in TABLES[table]["columns"]]
-
-
-def col_meta(table, column):
-    for c in TABLES[table]["columns"]:
-        if c["name"] == column:
-            return c
-    return None
-
-
-CONFIDENCE_RANK = {"verified": 0, "high": 1, "low": 2}
-
-
-def find_relationship(table_a, table_b):
-    """Find the best relationship between two already-known tables, either direction.
-    When more than one relationship connects the same pair (e.g. an ordinary FK
-    plus a verified shared-PK link), prefer the higher-confidence one rather
-    than whichever appears first in the data."""
-    candidates = []
-    for r in RELATIONSHIPS:
-        if r["from_table"] == table_a and r["to_table"] == table_b:
-            candidates.append((r, "a_to_b"))
-        elif r["from_table"] == table_b and r["to_table"] == table_a:
-            candidates.append((r, "b_to_a"))
-    if not candidates:
-        return None, None
-    candidates.sort(key=lambda x: CONFIDENCE_RANK.get(x[0]["confidence"], 9))
-    return candidates[0]
-
-
-def find_composite_relationship(table_a, table_b):
-    """Find a multi-column relationship between two tables, from composite_relationships."""
-    for cr in COMPOSITE_RELATIONSHIPS:
-        if set(cr["tables"]) == {table_a, table_b}:
-            return cr
-    return None
-
-
-def add_table_to_query(table):
-    if table in st.session_state.query_tables:
-        return
-    # try to auto-derive a join against any table already in the query
-    join_found = False
-    if st.session_state.query_tables:
-        for existing in st.session_state.query_tables:
-            rel, direction = find_relationship(existing, table)
-            if rel:
-                if direction == "a_to_b":
-                    left, left_col, right, right_col = existing, rel["from_column"], table, rel["to_column"]
-                else:
-                    left, left_col, right, right_col = table, rel["from_column"], existing, rel["to_column"]
-                st.session_state.joins.append({
-                    "left": left, "left_col": left_col,
-                    "right": right, "right_col": right_col,
-                    "confidence": rel["confidence"],
-                    "join_type": "JOIN",
-                })
-                join_found = True
-                break
-            # no id/code relationship - try a composite (multi-column) one
-            cr = find_composite_relationship(existing, table)
-            if cr:
-                left, right = existing, table
-                conditions = cr["conditions"]
-                st.session_state.joins.append({
-                    "left": left, "right": right,
-                    "is_composite": True, "conditions": conditions,
-                    "confidence": cr["confidence"],
-                    "join_type": "LEFT JOIN" if cr["confidence"] != "verified" else "JOIN",
-                    "note": cr.get("note", ""),
-                })
-                join_found = True
-                break
-    st.session_state.query_tables.append(table)
-    # default field selection: primary key + first few non-id columns
-    pk = TABLES[table]["primary_key"]
-    defaults = list(pk)
-    st.session_state.selected_fields[table] = defaults
-    if not join_found and len(st.session_state.query_tables) > 1:
-        st.session_state["_join_warning"] = table
-
-
-def remove_table_from_query(table):
-    st.session_state.query_tables = [t for t in st.session_state.query_tables if t != table]
-    st.session_state.joins = [
-        j for j in st.session_state.joins if j["left"] != table and j["right"] != table
-    ]
-    st.session_state.selected_fields.pop(table, None)
-    st.session_state.filters = [f for f in st.session_state.filters if f["table"] != table]
-
+st.title("Phir-Dash")
+st.caption("Ask a business question, or build an ad-hoc query - both live here.")
 
 # ---------------------------------------------------------------------------
-# SQL generation
+# 1. Cloud -> Replica (reversed lookup)
 # ---------------------------------------------------------------------------
-def qualified(table):
-    """Schema-qualify a table name with the currently selected Cloud/tenant schema."""
-    prefix = st.session_state.get("cloud_schema", "")
-    return f"{prefix}.{table}" if prefix else table
-
-
-def generate_sql():
-    if not st.session_state.query_tables:
-        return "-- Add at least one table to build a query."
-
-    base = st.session_state.query_tables[0]
-    lines = []
-
-    select_parts = []
-    for t in st.session_state.query_tables:
-        for c in st.session_state.selected_fields.get(t, []):
-            select_parts.append(f"{qualified(t)}.{c}")
-    if not select_parts:
-        select_parts = [f"{qualified(base)}.*"]
-
-    lines.append("SELECT " + ",\n       ".join(select_parts))
-    lines.append(f"FROM {qualified(base)}")
-
-    joined = {base}
-    # order joins so each new table has its anchor already present
-    remaining_joins = list(st.session_state.joins)
-    safety = 0
-    while remaining_joins and safety < 100:
-        safety += 1
-        progressed = False
-        for j in list(remaining_joins):
-            jt = j.get("join_type", "JOIN")
-            if j.get("is_composite"):
-                if j["left"] in joined and j["right"] not in joined:
-                    on_parts = [f"{qualified(j['left'])}.{c['left_col']} {c['op']} {qualified(j['right'])}.{c['right_col']}"
-                                for c in j["conditions"]]
-                    lines.append(f"  {jt} {qualified(j['right'])} ON " + "\n    AND ".join(on_parts))
-                    joined.add(j["right"]); remaining_joins.remove(j); progressed = True
-                elif j["right"] in joined and j["left"] not in joined:
-                    on_parts = [f"{qualified(j['right'])}.{c['right_col']} {c['op']} {qualified(j['left'])}.{c['left_col']}"
-                                for c in j["conditions"]]
-                    lines.append(f"  {jt} {qualified(j['left'])} ON " + "\n    AND ".join(on_parts))
-                    joined.add(j["left"]); remaining_joins.remove(j); progressed = True
-                continue
-            if j["left"] in joined and j["right"] not in joined:
-                lines.append(
-                    f"  {jt} {qualified(j['right'])} ON {qualified(j['left'])}.{j['left_col']} = {qualified(j['right'])}.{j['right_col']}"
-                )
-                joined.add(j["right"])
-                remaining_joins.remove(j)
-                progressed = True
-            elif j["right"] in joined and j["left"] not in joined:
-                lines.append(
-                    f"  {jt} {qualified(j['left'])} ON {qualified(j['right'])}.{j['right_col']} = {qualified(j['left'])}.{j['left_col']}"
-                )
-                joined.add(j["left"])
-                remaining_joins.remove(j)
-                progressed = True
-        if not progressed:
-            break
-
-    # any query tables with no discovered join path -> flag with a placeholder
-    for t in st.session_state.query_tables:
-        if t not in joined:
-            lines.append(f"  -- ⚠️ CROSS JOIN {qualified(t)}  -- no relationship found; add ON condition manually")
-            lines.append(f"  JOIN {qualified(t)} ON 1=1")
-            joined.add(t)
-
-    if st.session_state.filters:
-        where_parts = []
-        for f in st.session_state.filters:
-            t, c, op, v = f["table"], f["column"], f["operator"], f["value"]
-            col_ref = f"{qualified(t)}.{c}"
-            if op in ("IS NULL", "IS NOT NULL"):
-                where_parts.append(f"{col_ref} {op}")
-            elif op == "IN":
-                items = [x.strip() for x in v.split(",") if x.strip()]
-                meta = col_meta(t, c)
-                is_numeric = meta and any(k in meta["type"] for k in ["int", "decimal", "float", "double"])
-                if is_numeric:
-                    formatted = ", ".join(items)
-                else:
-                    formatted = ", ".join(f"'{x}'" for x in items)
-                where_parts.append(f"{col_ref} IN ({formatted})")
-            elif op == "BETWEEN":
-                parts = [x.strip() for x in v.split(",")]
-                if len(parts) == 2:
-                    where_parts.append(f"{col_ref} BETWEEN '{parts[0]}' AND '{parts[1]}'")
-                else:
-                    where_parts.append(f"-- ⚠️ BETWEEN needs two comma-separated values for {col_ref}")
-            elif op == "LIKE":
-                where_parts.append(f"{col_ref} LIKE '%{v}%'")
-            else:
-                meta = col_meta(t, c)
-                is_numeric = meta and any(k in meta["type"] for k in ["int", "decimal", "float", "double"])
-                val = v if is_numeric else f"'{v}'"
-                where_parts.append(f"{col_ref} {op} {val}")
-        lines.append("WHERE " + "\n  AND ".join(where_parts))
-
-    lines.append("LIMIT 500;")
-    return "\n".join(lines)
-
-
-# ---------------------------------------------------------------------------
-# UI
-# ---------------------------------------------------------------------------
-st.title("🔗 Redash Query Builder")
-st.caption(
-    "Pick a table, follow the relationships, choose fields and filters — get a working SQL query. "
-    "No preset queries, no LLM: this is a static relationship map built from the schema's `_id` "
-    "naming conventions."
-)
-
-with st.sidebar:
-    st.header("Replica / Schema")
-    replica_names = list(REPLICA_MAP.keys())
-    st.session_state.replica = st.selectbox(
-        "Replica (connection)",
-        replica_names,
-        index=replica_names.index(st.session_state.replica) if st.session_state.replica in replica_names else 0,
-    )
-    replica_info = REPLICA_MAP[st.session_state.replica]
-    schemas = replica_info["schemas"]
-
-    if replica_info["type"] == "pending_clarification" or not schemas:
-        st.warning("Schema list for this replica isn't confirmed yet.")
-        st.session_state.cloud_schema = ""
-    else:
-        schema_label = "Cloud schema" if replica_info["type"].startswith("shared_cloud") else "Client schema"
-        if st.session_state.cloud_schema not in schemas:
-            st.session_state.cloud_schema = schemas[0]
-        st.session_state.cloud_schema = st.selectbox(
-            schema_label, schemas, index=schemas.index(st.session_state.cloud_schema)
-        )
-        if replica_info["type"] == "dedicated":
-            st.caption("Dedicated server — one client per schema.")
-        elif replica_info["type"] == "dedicated_single_schema":
-            st.caption("Dedicated server — single schema, named to match the replica.")
-        elif replica_info["type"] == "shared_cloud_foreign":
-            st.caption(replica_info.get("note", ""))
-
-    st.caption(f"All schemas share the same table structure (confirmed) — "
-               f"queries are generated against `{st.session_state.cloud_schema or '<schema>'}.<table>`.")
-
-    st.divider()
-    st.header("Query")
-    if st.session_state.query_tables:
-        for t in st.session_state.query_tables:
-            c1, c2 = st.columns([4, 1])
-            c1.write(f"**{t}**")
-            if c2.button("✕", key=f"remove_{t}"):
-                remove_table_from_query(t)
-                st.rerun()
-    else:
-        st.write("_No tables added yet._")
-
-    if st.session_state.joins:
-        st.caption("Joins (toggle INNER/LEFT):")
-        for idx, j in enumerate(st.session_state.joins):
-            label = f"{j['left']} ↔ {j['right']}"
-            current = j.get("join_type", "JOIN")
-            choice = st.selectbox(label, ["JOIN", "LEFT JOIN"],
-                                   index=0 if current == "JOIN" else 1,
-                                   key=f"jointype_{idx}")
-            st.session_state.joins[idx]["join_type"] = choice
-            if j.get("is_composite"):
-                st.caption(f"　composite join · {j.get('note','')}")
-
-    if st.session_state.query_tables:
-        if st.button("Clear query", type="secondary"):
-            st.session_state.query_tables = []
-            st.session_state.joins = []
-            st.session_state.selected_fields = {}
-            st.session_state.filters = []
-            st.rerun()
-
-    st.divider()
-    with st.expander(f"⚠️ Unresolved relationships ({len(AMBIGUOUS)})"):
-        st.caption("Columns ending in `_id` that couldn't be confidently mapped to a table — "
-                   "mostly generic-purpose columns or names needing more domain knowledge.")
-        for a in AMBIGUOUS[:60]:
-            cands = ", ".join(a["candidates"]) if a["candidates"] else "no match"
-            st.write(f"`{a['from_table']}.{a['from_column']}` → {cands}")
-
-    with st.expander(f"🔀 Polymorphic references ({len(POLYMORPHIC_RELATIONSHIPS)})"):
-        st.caption("These columns point at *different* tables depending on a discriminator "
-                   "column's value — not a fixed relationship, so add the target table manually "
-                   "and filter on the discriminator yourself.")
-        for p in POLYMORPHIC_RELATIONSHIPS:
-            conf_icon = {"verified": "✅", "inferred": "🟡", "unresolved": "❓"}.get(p["confidence"], "")
-            disc = p["discriminator_column"] or "unknown discriminator"
-            st.write(f"{conf_icon} **{p['table']}**: `{disc}` decides what `{p['id_column']}` points to")
-            st.caption(p["example"])
-
-# --- Table picker ---------------------------------------------------------
-st.subheader("1. Pick a starting table")
-tab1, tab2 = st.tabs(["⭐ Starter tables", "🔍 Search all tables"])
-
-with tab1:
-    cols = st.columns(len(STARTER_TABLES) or 1)
-    for i, t in enumerate(STARTER_TABLES):
-        with cols[i]:
-            if st.button(f"➕ {t}", key=f"starter_{t}", use_container_width=True):
-                add_table_to_query(t)
-                st.rerun()
-
-with tab2:
-    search = st.selectbox("Table name", options=[""] + ALL_TABLE_NAMES, index=0)
-    if search:
-        c1, c2 = st.columns([1, 3])
-        with c1:
-            if st.button(f"➕ Add {search}"):
-                add_table_to_query(search)
-                st.rerun()
-        with c2:
-            st.caption(f"{len(col_names(search))} columns, PK: {', '.join(TABLES[search]['primary_key'])}")
-
-if "_join_warning" in st.session_state:
-    st.warning(
-        f"Added **{st.session_state['_join_warning']}** but found no direct relationship to the "
-        f"other tables already in the query. It was added as a CROSS JOIN placeholder — fix the "
-        f"ON condition manually, or add an intermediate table that bridges them."
-    )
-    del st.session_state["_join_warning"]
-
-# --- Related tables ---------------------------------------------------------
-if st.session_state.query_tables:
-    st.subheader("2. Explore related tables")
-    for base_table in st.session_state.query_tables:
-        with st.expander(f"Tables related to **{base_table}**", expanded=(len(st.session_state.query_tables) == 1)):
-            out_rels = sorted(OUTGOING.get(base_table, []), key=lambda r: CONFIDENCE_ORDER.get(r["confidence"], 9))
-            in_rels = sorted(INCOMING.get(base_table, []), key=lambda r: CONFIDENCE_ORDER.get(r["confidence"], 9))
-
-            c1, c2 = st.columns(2)
-            with c1:
-                st.markdown(f"**{base_table} references →**")
-                if not out_rels:
-                    st.caption("No outgoing `_id` references found.")
-                for r in out_rels:
-                    already = r["to_table"] in st.session_state.query_tables
-                    label = f"{CONFIDENCE_LABEL[r['confidence']]}  `{r['from_column']}` → **{r['to_table']}**"
-                    bc1, bc2 = st.columns([3, 1])
-                    bc1.write(label)
-                    if not already:
-                        if bc2.button("Add", key=f"add_out_{base_table}_{r['from_column']}_{r['to_table']}"):
-                            add_table_to_query(r["to_table"])
-                            st.rerun()
-                    else:
-                        bc2.caption("in query")
-
-            with c2:
-                st.markdown(f"**Tables that reference {base_table} →**")
-                if not in_rels:
-                    st.caption("No incoming references found.")
-                for r in in_rels[:25]:
-                    already = r["from_table"] in st.session_state.query_tables
-                    label = f"{CONFIDENCE_LABEL[r['confidence']]}  **{r['from_table']}**.`{r['from_column']}`"
-                    bc1, bc2 = st.columns([3, 1])
-                    bc1.write(label)
-                    if not already:
-                        if bc2.button("Add", key=f"add_in_{base_table}_{r['from_table']}_{r['from_column']}"):
-                            add_table_to_query(r["from_table"])
-                            st.rerun()
-                    else:
-                        bc2.caption("in query")
-                if len(in_rels) > 25:
-                    st.caption(f"...and {len(in_rels) - 25} more referencing tables not shown.")
-
-# --- Fields & filters --------------------------------------------------------
-if st.session_state.query_tables:
-    st.subheader("3. Choose fields")
-    field_cols = st.columns(len(st.session_state.query_tables))
-    for i, t in enumerate(st.session_state.query_tables):
-        with field_cols[i]:
-            st.markdown(f"**{t}**")
-            chosen = st.multiselect(
-                "Fields",
-                options=col_names(t),
-                default=st.session_state.selected_fields.get(t, TABLES[t]["primary_key"]),
-                key=f"fields_{t}",
-                label_visibility="collapsed",
-            )
-            st.session_state.selected_fields[t] = chosen
-
-    st.subheader("4. Add filters")
-    for idx, f in enumerate(st.session_state.filters):
-        c1, c2, c3, c4, c5 = st.columns([2, 2, 1.5, 2, 0.5])
-        f["table"] = c1.selectbox("Table", st.session_state.query_tables,
-                                   index=st.session_state.query_tables.index(f["table"]),
-                                   key=f"filt_table_{idx}")
-        f["column"] = c2.selectbox("Column", col_names(f["table"]),
-                                    index=col_names(f["table"]).index(f["column"]) if f["column"] in col_names(f["table"]) else 0,
-                                    key=f"filt_col_{idx}")
-        f["operator"] = c3.selectbox("Op", OPERATORS,
-                                      index=OPERATORS.index(f["operator"]),
-                                      key=f"filt_op_{idx}")
-        if f["operator"] not in ("IS NULL", "IS NOT NULL"):
-            f["value"] = c4.text_input("Value", value=f["value"], key=f"filt_val_{idx}",
-                                        placeholder="comma-separate for IN / BETWEEN")
-        else:
-            c4.caption("(no value needed)")
-        if c5.button("✕", key=f"filt_remove_{idx}"):
-            st.session_state.filters.pop(idx)
-            st.rerun()
-
-    if st.button("➕ Add filter"):
-        default_table = st.session_state.query_tables[0]
-        st.session_state.filters.append({
-            "table": default_table,
-            "column": col_names(default_table)[0],
-            "operator": "=",
-            "value": "",
-        })
-        st.rerun()
-
-    # --- SQL output ---------------------------------------------------------
-    st.subheader("5. Generated SQL")
-    sql = generate_sql()
-    st.code(sql, language="sql")
-    st.caption(
-        f"{st.session_state.replica} → {st.session_state.cloud_schema} · "
-        f"LIMIT 500 added by default — remove it in Redash if you need the full result."
-    )
+cloud = st.selectbox("Cloud / client", [""] + ALL_CLOUDS, index=0)
+if cloud:
+    info = CLOUD_INDEX[cloud]
+    c1, c2 = st.columns(2)
+    c1.metric("Replica", info["replica"])
+    c2.metric("SQL schema used", info["sql_schema"])
+    schema_name = info["sql_schema"]
 else:
-    st.info("Add a table above to start building a query.")
+    st.info("Pick a Cloud/client above to continue.")
+    schema_name = None
+
+st.divider()
+
+if not schema_name:
+    st.stop()
+
+# ---------------------------------------------------------------------------
+# 2. Your selections so far (top, editable/removable)
+# ---------------------------------------------------------------------------
+st.subheader("Your selections")
+if not st.session_state.blocks:
+    st.caption("Nothing added yet - build one below.")
+else:
+    for i, blk in enumerate(st.session_state.blocks):
+        c1, c2, c3 = st.columns([3, 5, 1])
+        c1.markdown(f"**{blk['label']}**")
+        field_names = ", ".join(f["label"] for f in blk["fields"])
+        c2.caption(field_names[:120] + ("..." if len(field_names) > 120 else ""))
+        if c3.button("✕", key=f"remove_block_{i}"):
+            st.session_state.blocks.pop(i)
+            st.session_state.final_result = None
+            st.rerun()
+    if st.button("🔄 Generate Final Query", type="primary"):
+        st.session_state.final_result = build_combined_query(
+            st.session_state.blocks, schema_name, RELATIONSHIPS, COMPOSITE_RELATIONSHIPS
+        )
+
+if st.session_state.final_result:
+    res = st.session_state.final_result
+    st.markdown("### Result")
+    if res["joined_sql"]:
+        if res["link_notes"]:
+            st.success("Linked your selections on: " + " · ".join(res["link_notes"]))
+        st.code(res["joined_sql"], language="sql")
+    else:
+        st.warning(
+            "These selections don't have a verified relationship between them, so "
+            "they're shown as separate queries instead of being forced together "
+            "(that would risk a misleading result): "
+            + ", ".join(f"**{a}** ↔ **{b}**" for a, b in res["unlinked_blocks"])
+        )
+        for label, sql in res["standalone_sqls"]:
+            st.markdown(f"**{label}**")
+            st.code(sql, language="sql")
+
+st.divider()
+
+# ---------------------------------------------------------------------------
+# 3. Add a category (the builder - reactive, no submit button for preview)
+# ---------------------------------------------------------------------------
+st.subheader("Add a category")
+major = st.selectbox("Major category", MAJOR_CATEGORIES, key="draft_major")
+
+if major == ADVANCED_LABEL:
+    # ---- Expert path: pick any table directly ----
+    all_table_names = sorted(TABLES.keys())
+    table = st.selectbox("Table", [""] + all_table_names)
+    if table:
+        cols = [c["name"] for c in TABLES[table]["columns"]]
+        chosen_fields = st.multiselect("Fields", cols, default=TABLES[table]["primary_key"])
+
+        st.caption("Filters (optional)")
+        n_filters = st.number_input("Number of filter conditions", 0, 10, 0, key="adv_nfilters")
+        filled_conditions = []
+        for i in range(n_filters):
+            fc1, fc2, fc3 = st.columns([2, 1, 2])
+            fcol = fc1.selectbox("Column", cols, key=f"adv_fcol_{i}")
+            fop = fc2.selectbox("Op", ["=", "!=", ">", ">=", "<", "<=", "LIKE"], key=f"adv_fop_{i}")
+            fval = fc3.text_input("Value", key=f"adv_fval_{i}")
+            if fval:
+                meta = next((c for c in TABLES[table]["columns"] if c["name"] == fcol), None)
+                is_num = meta and any(k in meta["type"] for k in ["int", "decimal", "float", "double"])
+                lit = fval if is_num else f"'{fval}'"
+                op = f"LIKE '%{fval}%'" if fop == "LIKE" else f"{fop} {lit}"
+                filled_conditions.append(f"{table}.{fcol} " + (op if fop == "LIKE" else op))
+
+        if chosen_fields:
+            draft_block = {
+                "anchor_table": table, "anchor_alias": table,
+                "from_join_clause": f"FROM {table} {table}",
+                "fields": [{"label": c, "expr": f"{table}.{c}"} for c in chosen_fields],
+                "filled_filter_conditions": filled_conditions,
+                "label": f"Advanced: {table}",
+            }
+            st.markdown("**Live preview:**")
+            preview = build_combined_query([draft_block], schema_name, RELATIONSHIPS, COMPOSITE_RELATIONSHIPS)
+            st.code(preview["joined_sql"], language="sql")
+            if st.button("➕ Add this selection"):
+                st.session_state.blocks.append(draft_block)
+                st.rerun()
+else:
+    subcats = TAXONOMY[major]
+    sub = st.selectbox("Sub-category", list(subcats.keys()))
+    d = subcats[sub]
+    if d["source"] == "raw":
+        st.caption("⚠️ No matching business report exists for this yet - showing raw table columns.")
+
+    field_labels_all = [f["label"] for f in d["fields"]]
+    chosen_field_labels = st.multiselect(f"Fields ({len(field_labels_all)} available)", field_labels_all)
+
+    filled_conditions = []
+    if d["filters"]:
+        st.caption("Filters (optional)")
+        for fi, filt in enumerate(d["filters"]):
+            use_it = st.checkbox(filt["label"], key=f"filt_use_{major}_{sub}_{fi}")
+            if use_it:
+                condition = html.unescape(filt["condition"] or "")
+                tokens = extract_tokens(condition)
+                token_values = {}
+                for tok in tokens:
+                    tok_lower = tok.lower()
+                    if filt["type"] in ("daterange", "datetime") or "date" in tok_lower or "start" in tok_lower or "end" in tok_lower:
+                        val = st.date_input(f"{filt['label']} - {tok}", key=f"filt_val_{major}_{sub}_{fi}_{tok}")
+                        token_values[tok] = f"'{val}'"
+                    elif filt["type"] == "number":
+                        val = st.text_input(f"{filt['label']} - {tok}", key=f"filt_val_{major}_{sub}_{fi}_{tok}")
+                        token_values[tok] = val or "0"
+                    elif filt["type"] == "boolean":
+                        val = st.checkbox(f"{filt['label']} - {tok}", key=f"filt_val_{major}_{sub}_{fi}_{tok}")
+                        token_values[tok] = "1" if val else "0"
+                    else:
+                        val = st.text_input(f"{filt['label']} - {tok}", key=f"filt_val_{major}_{sub}_{fi}_{tok}")
+                        token_values[tok] = f"'{val}'"
+                if all(v not in ("''", "", None) for v in token_values.values()):
+                    filled_conditions.append(substitute_filter_tokens(condition, token_values))
+
+    if chosen_field_labels:
+        draft_fields = [f for f in d["fields"] if f["label"] in chosen_field_labels]
+        draft_block = {
+            "anchor_table": d["anchor_table"], "anchor_alias": d["anchor_alias"],
+            "from_join_clause": d["from_join_clause"],
+            "fields": draft_fields,
+            "filled_filter_conditions": filled_conditions,
+            "label": f"{major}: {sub}",
+        }
+        st.markdown("**Live preview:**")
+        preview = build_combined_query([draft_block], schema_name, RELATIONSHIPS, COMPOSITE_RELATIONSHIPS)
+        st.code(preview["joined_sql"], language="sql")
+        if st.button("➕ Add this selection", key="add_taxonomy_block"):
+            st.session_state.blocks.append(draft_block)
+            st.rerun()
+    else:
+        st.caption("Check at least one field above to see a preview.")
