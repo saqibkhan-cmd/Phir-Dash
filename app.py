@@ -45,17 +45,67 @@ st.set_page_config(page_title="Phir-Dash", layout="wide")
 
 @st.cache_data
 def load_json(name):
-    with open(DATA_DIR / name) as f:
-        return json.load(f)
+    path = DATA_DIR / name
+    try:
+        with open(path) as f:
+            return json.load(f)
+    except FileNotFoundError:
+        st.error(
+            f"`data/{name}` is missing from this deployment - it looks like it "
+            f"never got uploaded, or the upload didn't go through. Re-upload "
+            f"`data/{name}` from the project files."
+        )
+        st.stop()
+    except json.JSONDecodeError:
+        st.error(
+            f"`data/{name}` exists but isn't valid JSON - it may have been "
+            f"partially uploaded or corrupted. Re-upload `data/{name}` from "
+            f"the project files."
+        )
+        st.stop()
 
 
 SCHEMA_DATA = load_json("schema_data.json")
+if "tables" not in SCHEMA_DATA or "relationships" not in SCHEMA_DATA:
+    st.error(
+        "data/schema_data.json on this deployment is missing expected data "
+        "(no 'tables' or 'relationships' key). Re-upload the latest "
+        "data/schema_data.json from the project files."
+    )
+    st.stop()
 TABLES = SCHEMA_DATA["tables"]
 RELATIONSHIPS = SCHEMA_DATA["relationships"]
 COMPOSITE_RELATIONSHIPS = SCHEMA_DATA.get("composite_relationships", [])
 REPLICA_MAP = load_json("replica_map.json")
+if not REPLICA_MAP or not all("schemas" in v for v in REPLICA_MAP.values()):
+    st.error(
+        "data/replica_map.json on this deployment looks malformed (missing "
+        "'schemas' for one or more replicas). Re-upload the latest "
+        "data/replica_map.json from the project files."
+    )
+    st.stop()
 TAXONOMY_DATA = load_json("taxonomy.json")
-CATEGORIES = TAXONOMY_DATA["categories"]
+if isinstance(TAXONOMY_DATA, dict) and "categories" in TAXONOMY_DATA:
+    CATEGORIES = TAXONOMY_DATA["categories"]
+elif isinstance(TAXONOMY_DATA, dict) and TAXONOMY_DATA and all(isinstance(v, dict) for v in TAXONOMY_DATA.values()):
+    # older taxonomy.json format (flat major->sub dict, no "categories"
+    # wrapper, possibly with a stray "personas" key from an in-between
+    # version) - degrade gracefully instead of crashing on a KeyError
+    CATEGORIES = {k: v for k, v in TAXONOMY_DATA.items() if k != "personas"}
+    st.warning(
+        "data/taxonomy.json on this deployment looks like an older version "
+        "(missing the current file's structure). The app is still running "
+        "using what it can read, but re-upload the latest data/taxonomy.json "
+        "to get the current categories and fields.",
+        icon="⚠️",
+    )
+else:
+    st.error(
+        "data/taxonomy.json couldn't be read in any recognized format. "
+        "Re-upload the latest data/taxonomy.json from the project files - "
+        "this usually means an old file update didn't fully go through."
+    )
+    st.stop()
 
 ADVANCED_LABEL = "Advanced / Custom Table"
 MAJOR_CATEGORIES = list(CATEGORIES.keys()) + [ADVANCED_LABEL]
