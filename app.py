@@ -293,7 +293,36 @@ st.divider()
 # 3. Add a category
 # ---------------------------------------------------------------------------
 st.subheader("Add a category")
-major = st.selectbox("What's this about?", MAJOR_CATEGORIES, key="draft_major")
+
+search_query = st.text_input(
+    "🔍 Search for a report (try \"blocked inventory\", \"purchase order\", \"GRN\", \"who disabled\")",
+    key="search_box",
+)
+if search_query:
+    query_lower = search_query.lower()
+    matches = []
+    for maj, subs in CATEGORIES.items():
+        for sub, d in subs.items():
+            haystack = " ".join([
+                maj, sub, d.get("description", ""),
+                " ".join(f["label"] for f in d["fields"]),
+                " ".join(f["label"] for f in d["filters"]),
+            ]).lower()
+            if query_lower in haystack:
+                matches.append((haystack.count(query_lower), maj, sub))
+    matches.sort(key=lambda x: -x[0])
+    if matches:
+        st.caption(f"Found {len(matches)} matching report(s) - click one to jump straight there:")
+        for _, maj, sub in matches[:8]:
+            if st.button(f"{maj} → {sub}", key=f"searchjump__{maj}__{sub}"):
+                st.session_state["draft_major"] = maj
+                st.session_state[f"sub_select__{maj}"] = sub
+                st.rerun()
+    else:
+        st.caption("No matches - try browsing the categories below instead, or use Advanced / Custom Table.")
+    st.divider()
+
+major = st.selectbox("...or browse by category", MAJOR_CATEGORIES, key="draft_major")
 
 try:
     if major == ADVANCED_LABEL:
@@ -348,6 +377,8 @@ try:
         sub = st.selectbox("Which report?", list(subcats.keys()), key=f"sub_select__{major}")
         d = subcats[sub]
         key_ns = f"tax__{major}__{sub}"
+        if d.get("description"):
+            st.info(d["description"])
         if d["source"] == "raw":
             st.caption("⚠️ No matching business report exists for this yet - showing raw table columns.")
 
@@ -364,11 +395,12 @@ try:
         quick_field_labels = [l for l in field_labels_all if l in quick_defaults]
         rest_field_labels = [l for l in field_labels_all if l not in quick_defaults]
 
-        st.caption("A sensible default set of columns is pre-checked below:")
+        st.caption(f"These {len(quick_field_labels)} columns are included by default for this report - "
+                   f"uncheck any you don't need:")
         chosen_quick = checkbox_grid(quick_field_labels, f"{key_ns}__quick", n_cols=3, defaults=quick_defaults)
         chosen_rest = []
         if rest_field_labels:
-            with st.expander(f"Show more fields ({len(rest_field_labels)} more available)"):
+            with st.expander(f"+ Add more columns ({len(rest_field_labels)} more available)"):
                 chosen_rest = checkbox_grid(rest_field_labels, f"{key_ns}__rest", n_cols=3)
         chosen_field_labels = chosen_quick + chosen_rest
         if not chosen_field_labels:

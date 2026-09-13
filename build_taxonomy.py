@@ -29,6 +29,11 @@ def humanize(col_name):
     return " ".join(w.capitalize() for w in col_name.split("_"))
 
 
+def make_description(major, sub, anchor_table, quick_labels):
+    hint = ", ".join(quick_labels[:3]) if quick_labels else "key details"
+    return f"Look up {sub} records - includes things like {hint}."
+
+
 def from_export(export_name, label=None):
     cfg = bv_by_name.get(export_name)
     if not cfg or not cfg.get("anchor_table") or not cfg.get("from_join_clause"):
@@ -39,8 +44,10 @@ def from_export(export_name, label=None):
                for f in cfg["filters"] if f.get("business_name")]
     quick_labels = pick_quick_fields(all_fields)
     quick_filter_labels = pick_quick_filters(filters)
+    disp_label = label or export_name
     return {
-        "label": label or export_name,
+        "label": disp_label,
+        "description": make_description("", disp_label, cfg["anchor_table"], quick_labels),
         "anchor_table": cfg["anchor_table"],
         "anchor_alias": cfg["anchor_alias"],
         "from_join_clause": cfg["from_join_clause"],
@@ -61,17 +68,19 @@ def from_export(export_name, label=None):
 QUICK_KEYWORDS = ["code", "status", "name", "date", "created", "updated", "qty", "quantity"]
 
 
-def pick_quick_fields(fields, max_quick=6):
+def pick_quick_fields(fields, min_quick=3, max_quick=8):
     """Prefer the report's own column order - real report authors already
-    put the most identifying fields first (confirmed: GRN starts with GRN
-    Code, Sale Orders starts with Sale Order Item Code). Re-sorting by a
-    keyword score alone scattered in fields from unrelated sub-sections of
-    a wide report - respecting original order and only using keywords to
-    filter (not reorder) fixes that."""
-    quick = [f["label"] for f in fields
-             if any(k in f["label"].lower() for k in QUICK_KEYWORDS)][:max_quick]
-    if not quick and fields:
-        quick = [f["label"] for f in fields[:max_quick]]
+    put the most identifying fields first. Count is NOT fixed - it's
+    however many identifying fields naturally exist (bounded), so a report
+    with 4 obvious identifying fields shows 4, not padded/truncated to a
+    round number that has nothing to do with the actual report."""
+    matches = [f["label"] for f in fields
+               if any(k in f["label"].lower() for k in QUICK_KEYWORDS)]
+    quick = matches[:max_quick]
+    if len(quick) < min_quick:
+        # not enough keyword matches - fall back to the report's own lead columns
+        extra = [f["label"] for f in fields if f["label"] not in quick]
+        quick = (quick + extra)[:min_quick]
     return quick
 
 
@@ -97,7 +106,7 @@ def pick_quick_filters(filters, max_quick=3):
     return quick
 
 
-def from_raw_table(table, label, field_names=None):
+def from_raw_table(table, label, field_names=None, description=None):
     if table not in TABLES:
         return None
     cols = TABLES[table]["columns"]
@@ -108,8 +117,24 @@ def from_raw_table(table, label, field_names=None):
     alias = table  # single-table block - alias with its own name, no collision risk in isolation
     fields = [{"label": humanize(c["name"]), "expr": f"{alias}.{c['name']}"} for c in cols]
     quick_labels = pick_quick_fields(fields)
+
+    # raw tables (no matching export config) get no filters otherwise - add
+    # a simple "contains" search on code/name if those columns exist, so a
+    # lookup like "find the role with PII in its code" is possible without
+    # dropping into Advanced mode
+    all_col_names = {c["name"] for c in TABLES[table]["columns"]}
+    filters = []
+    for search_col in ("code", "name"):
+        if search_col in all_col_names:
+            filters.append({
+                "label": f"{humanize(search_col)} contains",
+                "condition": f"{alias}.{search_col} LIKE CONCAT('%', :{search_col}Contains, '%')",
+                "type": "text",
+            })
+
     return {
         "label": label,
+        "description": description or make_description("", label, table, quick_labels),
         "anchor_table": table,
         "anchor_alias": alias,
         "from_join_clause": f"FROM {table} {alias}",
@@ -117,8 +142,8 @@ def from_raw_table(table, label, field_names=None):
         "export_name": None,
         "fields": fields,
         "quick_fields": quick_labels,
-        "filters": [],
-        "quick_filters": [],
+        "filters": filters,
+        "quick_filters": [f["label"] for f in filters],
     }
 
 
@@ -128,6 +153,7 @@ TAXONOMY = {
         "Sale Order Margins": from_export("Sale Order Margins"),
         "Back Orders": from_export("Back Orders"),
         "Hopped Orders": from_export("Hopped orders"),
+        "Customer Details": from_export("Copy of Customer Report", label="Customer Details"),
     },
     "Inventory": {
         "Shelfwise Inventory": from_export("Shelfwise Inventory"),
@@ -176,10 +202,16 @@ TAXONOMY = {
         "Users": from_export("Users"),
         "Users Detailed View": from_export("Users detailed view"),
         "User Comments": from_export("User Comments"),
-        "Role": from_raw_table("role", "Role", None),
-        "Access Resource": from_raw_table("access_resource", "Access Resource", None),
+        "Role": from_raw_table("role", "Role", None,
+            description="Look up roles and their access levels - includes PII access roles "
+                        "(e.g. codes like PII_ADMIN), permission levels, and role descriptions."),
+        "Access Resource": from_raw_table("access_resource", "Access Resource", None,
+            description="Look up individual access resources/permissions (URLs, APIs, UI tabs) "
+                        "that can be granted to a role."),
         "Role -> Access Resource Mapping": from_raw_table(
-            "role_access_resource", "Role Access Resource Mapping", None),
+            "role_access_resource", "Role Access Resource Mapping", None,
+            description="See which access resources/permissions are granted to which role - "
+                        "use this to check what a role (including PII-related roles) can access."),
     },
     "Putaway": {
         "Putaway": from_export("Putaway"),
@@ -212,9 +244,21 @@ TAXONOMY = {
     },
     "Reports": {
         "Transaction Ledger": from_export("Transaction Ledger"),
+        "Facility Transaction Ledger": from_export("Facility Transaction Ledger"),
         "HSN Summary Report": from_export("HSN Summary Report"),
         "Sales Forecast Report": from_export("Sales Forecast Report"),
         "Aggregate Sales Report": from_export("Aggregate Sales Report"),
+        "Cycle Count Non-Barcoded Items Report": from_export("CYCLE_COUNT_NONBARCODED_ITEMS_REPORT",
+                                                               label="Cycle Count Non-Barcoded Items Report"),
+        "GST E-Invoice": from_export("GST Einvoice"),
+        "Clear Tax Sale Report": from_export("Clear Tax Sale Report"),
+        "Clear Tax Credit Note": from_export("Clear Tax Credit Note"),
+        "Tally ERP9": from_export("Tally ERP9"),
+        "Tally GST Report": from_export("Tally GST Report"),
+        "Tally Return GST Report": from_export("Tally Return GST Report"),
+        "Warehouse Productivity Tracker": from_export("PRODUCTIVITY TRACKER",
+                                                        label="Warehouse Productivity Tracker"),
+        "Channel Prices Report": from_export("Prices Report", label="Channel Prices Report"),
     },
     "Cycle Count": {
         "Cycle Count Overall Data": from_export("Cycle Count Overall Data"),
