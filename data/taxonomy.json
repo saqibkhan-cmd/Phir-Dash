@@ -3,6 +3,7 @@
   "Sale Order": {
    "Sale Orders": {
     "label": "Sale Orders",
+    "description": "Look up Sale Orders records - includes things like Sale Order Item Code, Display Order Code, Reverse Pickup Code.",
     "anchor_table": "sale_order_item",
     "anchor_alias": "soi",
     "from_join_clause": "FROM sale_order_item soi\njoin sale_order so on (soi.`sale_order_id` = so.`id`)\nleft join address_detail ad1 on soi.`shipping_address_id` = ad1.`id`\nleft join state s on (s.iso2_code = ad1.state_code and s.country_code = ad1.country_code)\nleft join `address_detail` ad2 on so.`billing_address_id` = ad2.`id`\nleft join state s1 on (s1.iso2_code = ad2.state_code and s1.country_code = ad2.country_code)\nleft join item_type it on soi.`item_type_id` = it.`id`\nleft join category c on it.`category_id` = c.`id`\nleft join tax_type tt on tt.id = it.gst_tax_type_id\nleft join shipping_method sm  on soi.`shipping_method_id` = sm.`id`\nleft join shipping_package sp on soi.`shipping_package_id` = sp.`id`\nleft join prefetch_shipping_package_status psps on psps.tenant_id = so.tenant_id and psps.shipping_package_id = sp.id\nleft join shipping_package_type spt on sp.shipping_package_type_id=spt.id\nleft join invoice inv on inv.id=sp.invoice_id\nleft join gst_einvoice gei on gei.invoice_id = inv.id\nleft join invoice_item invt on invt.id = soi.invoice_item_id\nleft join return_manifest_item rmi on sp.id = rmi.shipping_package_id\nleft join reverse_pickup rp on rp.id = soi.reverse_pickup_id\nleft join reverse_pickup_item rpi on rp.id = rpi.reverse_pickup_id and rpi.sale_order_item_id = soi.id\nleft join facility f on soi.facility_id = f.id\nleft join party p on p.id=inv.from_party_id\nleft join customer cust on cust.id = so.customer_id\nleft join party p1 on p1.id=cust.id\nleft join channel ch on so.channel_id = ch.id\nleft join item i on (soi.item_id = i.id)\nleft join batch b on b.id = invt.batch_id\nleft join sale_order_metadata som on som.sale_order_id=so.id and som.type='PARENT_SALE_ORDER_CODE'\nLEFT JOIN party p2 ON p2.id = f.id\nLEFT JOIN return_manifest rm ON rm.id=rmi.return_manifest_id\nLEFT JOIN courier_return  cr ON cr.shipping_package_id = sp.id",
@@ -116,7 +117,9 @@
      "Reverse Pickup Code",
      "Reverse Pickup Created Date",
      "Invoice Code",
-     "Invoice Created"
+     "Invoice Created",
+     "EWayBill Date",
+     "Shipping Address Name"
     ],
     "filters": [
      {
@@ -213,6 +216,7 @@
    },
    "Sale Order Margins": {
     "label": "Sale Order Margins",
+    "description": "Look up Sale Order Margins records - includes things like Sale Order Item Code, Display Order Code, Customer Name.",
     "anchor_table": "sale_order_item",
     "anchor_alias": "soi",
     "from_join_clause": "FROM sale_order_item soi\njoin sale_order so on (soi.`sale_order_id` = so.`id`)\njoin item_type it on soi.`item_type_id` = it.`id`\njoin category c on it.`category_id` = c.`id`\nleft join shipping_package sp on soi.`shipping_package_id` = sp.`id`\nleft join invoice inv on inv.id=sp.invoice_id\nleft join invoice_item invt on (invt.invoice_id=inv.id and invt.item_type_id=soi.item_type_id and invt.total=(invt.quantity*soi.selling_price))\nleft join item i on i.id = soi.item_id\nleft join inflow_receipt_item iri on iri.id = i.inflow_receipt_item_id\nleft join inflow_receipt ir on iri.inflow_receipt_id = ir.id\nleft join purchase_order po on po.id = ir.purchase_order_id\nleft join party p on p.id=po.vendor_id\nleft join facility f on soi.facility_id = f.id",
@@ -326,7 +330,9 @@
      "Customer Name",
      "Invoice Code",
      "Invoice Created",
-     "Item SKU Code"
+     "Item SKU Code",
+     "Item Type Name",
+     "Voucher Code"
     ],
     "filters": [
      {
@@ -382,6 +388,7 @@
    },
    "Back Orders": {
     "label": "Back Orders",
+    "description": "Look up Back Orders records - includes things like Item Type Name, Item SkuCode, Category Name.",
     "anchor_table": "item_type_inventory_snapshot",
     "anchor_alias": "itis",
     "from_join_clause": "FROM item_type_inventory_snapshot itis\njoin item_type it on itis.item_type_id = it.id\njoin category c on it.category_id = c.id\nleft join vendor_item_type vit on (vit.item_type_id = it.id and vit.enabled = 1)\nleft join vendor v on (vit.vendor_id = v.id)\nleft join party p on (v.id = p.id and p.enabled = 1)",
@@ -431,7 +438,8 @@
      "Category Name",
      "Quantity To Raise",
      "Vendor SkuCode",
-     "Vendor Name"
+     "Vendor Name",
+     "Updated"
     ],
     "filters": [
      {
@@ -451,6 +459,7 @@
    },
    "Hopped Orders": {
     "label": "Hopped orders",
+    "description": "Look up Hopped orders records - includes things like Display Order Code, channel Name, Source Code.",
     "anchor_table": "hopped_sale_order_item_timeline",
     "anchor_alias": "h",
     "from_join_clause": "from hopped_sale_order_item_timeline h\nleft join sale_order so on so.id = h.sale_order_id\njoin sale_order_item soi on soi.id =h.sale_order_item_id\nleft join facility f on f.id = soi.facility_id\njoin item_type it on soi.item_type_id=it.id\njoin channel c on so.channel_id = c.id\nleft join user u on h.user_id = u.id",
@@ -532,7 +541,8 @@
      "Source Code",
      "Customer Name",
      "Status",
-     "Order Created At"
+     "Order Created At",
+     "Facility name"
     ],
     "filters": [
      {
@@ -580,11 +590,160 @@
      "Order # Contains",
      "Updated in Date Range"
     ]
+   },
+   "Customer Details": {
+    "label": "Customer Details",
+    "description": "Look up Customer Details records - includes things like Customer Code, Customer Name, Contact Name.",
+    "anchor_table": "customer",
+    "anchor_alias": "c",
+    "from_join_clause": "from customer c\nleft join party p on c.id = p.id\nleft join party_contact pc on pc.party_id = p.id\nleft join party_address pa on pa.party_id = p.id\nleft join party_address_type pat on (pa.party_address_type_id=pat.id and pat.code = 'BILLING')\nleft join party_address pa1 on pa1.party_id = p.id\nleft join party_address_type pat1 on (pa1.party_address_type_id=pat1.id and pat1.code = 'SHIPPING')",
+    "source": "export",
+    "export_name": "Copy of Customer Report",
+    "fields": [
+     {
+      "label": "Customer Code",
+      "expr": "p.code"
+     },
+     {
+      "label": "Customer Name",
+      "expr": "p.name"
+     },
+     {
+      "label": "PAN",
+      "expr": "p.pan"
+     },
+     {
+      "label": "TIN",
+      "expr": "p.tin"
+     },
+     {
+      "label": "GST Number",
+      "expr": "p.gst_number"
+     },
+     {
+      "label": "CST Number",
+      "expr": "p.cst_number"
+     },
+     {
+      "label": "Service Tax Number",
+      "expr": "p.st_number"
+     },
+     {
+      "label": "Website",
+      "expr": "p.website"
+     },
+     {
+      "label": "Provides C Form",
+      "expr": "c.provides_cform"
+     },
+     {
+      "label": "Dual Company Retail",
+      "expr": "c.dual_company_retail"
+     },
+     {
+      "label": "Tax Exempted",
+      "expr": "p.tax_exempted"
+     },
+     {
+      "label": "Contact Name",
+      "expr": "pc.name"
+     },
+     {
+      "label": "Contact Email",
+      "expr": "pc.email"
+     },
+     {
+      "label": "Contact Phone",
+      "expr": "pc.phone"
+     },
+     {
+      "label": "Shipping Address Line1",
+      "expr": "pa1.address_line1"
+     },
+     {
+      "label": "Shipping Address Line2",
+      "expr": "pa1.address_line2"
+     },
+     {
+      "label": "Shipping Address City",
+      "expr": "pa1.city"
+     },
+     {
+      "label": "Shipping Address State",
+      "expr": "pa1.state_code"
+     },
+     {
+      "label": "Shipping Address Country",
+      "expr": "pa1.country_code"
+     },
+     {
+      "label": "Shipping Address Pincode",
+      "expr": "pa1.pincode"
+     },
+     {
+      "label": "Shipping Address Phone",
+      "expr": "pa1.phone"
+     },
+     {
+      "label": "Billing Address Line1",
+      "expr": "pa.address_line1"
+     },
+     {
+      "label": "Billing Address Line2",
+      "expr": "pa.address_line2"
+     },
+     {
+      "label": "Billing Address City",
+      "expr": "pa.city"
+     },
+     {
+      "label": "Billing Address State",
+      "expr": "pa.state_code"
+     }
+    ],
+    "quick_fields": [
+     "Customer Code",
+     "Customer Name",
+     "Contact Name",
+     "Shipping Address Pincode"
+    ],
+    "filters": [
+     {
+      "label": "Customer Name Contains",
+      "condition": "p.name like :customerNameFilter",
+      "type": "text"
+     },
+     {
+      "label": "Customer Code Contains",
+      "condition": "p.code like :customerCodeFilter",
+      "type": "text"
+     },
+     {
+      "label": "Name Contains",
+      "condition": "pc.name like :nameFilter",
+      "type": "text"
+     },
+     {
+      "label": "Email Contains",
+      "condition": "pc.email like :emailFilter",
+      "type": "text"
+     },
+     {
+      "label": "Contact Number Contains",
+      "condition": "pa.phone like :phoneFilter",
+      "type": "text"
+     }
+    ],
+    "quick_filters": [
+     "Customer Code Contains",
+     "Contact Number Contains"
+    ]
    }
   },
   "Inventory": {
    "Shelfwise Inventory": {
     "label": "Shelfwise Inventory",
+    "description": "Look up Shelfwise Inventory records - includes things like Item Type SKU Code, Item Type Name, Quantity.",
     "anchor_table": "item_type_inventory",
     "anchor_alias": "iti",
     "from_join_clause": "from item_type_inventory iti\nleft join batch b on (iti.batch_id=b.id)\njoin item_type it on iti.item_type_id = it.id\njoin shelf sh on iti.shelf_id = sh.id\njoin section sec on sh.section_id = sec.id\njoin category c on it.category_id = c.id\njoin facility f on (iti.facility_id = f.id)",
@@ -650,7 +809,8 @@
      "Quantity",
      "Quantity Blocked",
      "Quantity Not Found",
-     "Quantity Damaged"
+     "Quantity Damaged",
+     "Batch Code"
     ],
     "filters": [
      {
@@ -680,6 +840,7 @@
    },
    "Inventory Worth": {
     "label": "Inventory Worth",
+    "description": "Look up Inventory Worth records - includes things like Item Type SKU Code, Item Type Name, Quantity.",
     "anchor_table": "item",
     "anchor_alias": "i",
     "from_join_clause": "from item i\njoin inflow_receipt_item iri on i.inflow_receipt_item_id = iri.id\njoin purchase_order_item poi on iri.purchase_order_item_id = poi.id\njoin item_type it on poi.item_type_id = it.id\njoin category c on it.category_id = c.id\njoin facility f on i.facility_id = f.id",
@@ -738,6 +899,7 @@
    },
    "Inventory Worth By Category": {
     "label": "Inventory Worth By Category",
+    "description": "Look up Inventory Worth By Category records - includes things like Category Code, Quantity, Category.",
     "anchor_table": "item",
     "anchor_alias": "i",
     "from_join_clause": "from item i\njoin inflow_receipt_item iri on i.inflow_receipt_item_id = iri.id\njoin purchase_order_item poi on iri.purchase_order_item_id = poi.id\njoin item_type it on poi.item_type_id = it.id\njoin category c on it.category_id = c.id",
@@ -767,7 +929,8 @@
     ],
     "quick_fields": [
      "Category Code",
-     "Quantity"
+     "Quantity",
+     "Category"
     ],
     "filters": [
      {
@@ -787,6 +950,7 @@
    },
    "Inventory Aging": {
     "label": "Inventory Aging",
+    "description": "Look up Inventory Aging records - includes things like Item Code, Item Created On, Vendor Name.",
     "anchor_table": "item",
     "anchor_alias": "i",
     "from_join_clause": "from item i\njoin item_type it on i.item_type_id=it.id\njoin category c on it.category_id=c.id\nleft join shelf s on s.id = i.shelf_id\nleft join inflow_receipt_item iri on iri.id=i.inflow_receipt_item_id\nleft join vendor v on v.id = i.vendor_id\nleft join party p on p.id = v.id\nleft join inflow_receipt ir on iri.inflow_receipt_id=ir.id\nleft join facility f on i.facility_id = f.id\nleft join putaway put on put.id=i.putaway_id",
@@ -884,7 +1048,8 @@
      "Vendor Name",
      "Vendor Code",
      "Item Type Name",
-     "Item Type skuCode"
+     "Item Type skuCode",
+     "Last Putaway Created"
     ],
     "filters": [
      {
@@ -920,6 +1085,7 @@
    },
    "Inventory Ledger": {
     "label": "Inventory Ledger",
+    "description": "Look up Inventory Ledger records - includes things like SKU Code, Date, Opening Balance.",
     "anchor_table": "inventory_ledger",
     "anchor_alias": "il",
     "from_join_clause": "from inventory_ledger il\njoin item_type it on il.sku_code = it.sku_code\nleft join ledger_sku_opening_counter lsoc on il.facility_id = lsoc.facility_id and il.sku_code = lsoc.sku_code",
@@ -977,7 +1143,8 @@
     ],
     "quick_fields": [
      "SKU Code",
-     "Date"
+     "Date",
+     "Opening Balance"
     ],
     "filters": [
      {
@@ -998,6 +1165,7 @@
    },
    "Inventory Adjustment": {
     "label": "Inventory Adjustment",
+    "description": "Look up Inventory Adjustment records - includes things like SKU Code, Item Name, from shelf code.",
     "anchor_table": "inventory_adjustment",
     "anchor_alias": "ia",
     "from_join_clause": "from inventory_adjustment ia\nleft join item_type it on (ia.sku_code=it.sku_code)\nleft join facility f on (ia.facility_id=f.id)",
@@ -1063,7 +1231,9 @@
      "from shelf code",
      "to shelf code",
      "username",
-     "Quantity"
+     "Quantity",
+     "created",
+     "updated"
     ],
     "filters": [
      {
@@ -1078,6 +1248,7 @@
    },
    "Reorder Report": {
     "label": "Reorder Report",
+    "description": "Look up Reorder Report records - includes things like Name, Reorder Quantity, SKU.",
     "anchor_table": "reorder_config",
     "anchor_alias": "rc",
     "from_join_clause": "from reorder_config rc\njoin item_type it on rc.item_type_id = it.id\njoin facility f on rc.facility_id = f.id\njoin item_type_inventory_snapshot itis on it.id=itis.item_type_id\njoin vendor_item_type vit on it.id = vit.item_type_id\nleft join category c on c.id = it.category_id",
@@ -1127,13 +1298,15 @@
     ],
     "quick_fields": [
      "Name",
-     "Reorder Quantity"
+     "Reorder Quantity",
+     "SKU"
     ],
     "filters": [],
     "quick_filters": []
    },
    "Fast Moving SKU": {
     "label": "Fast Moving SKU",
+    "description": "Look up Fast Moving SKU records - includes things like Sku Code, Name, Inventory.",
     "anchor_table": "item_type",
     "anchor_alias": "it",
     "from_join_clause": "from  item_type it\njoin item_type_inventory_snapshot itis on it.id=itis.item_type_id",
@@ -1163,13 +1336,15 @@
     ],
     "quick_fields": [
      "Sku Code",
-     "Name"
+     "Name",
+     "Inventory"
     ],
     "filters": [],
     "quick_filters": []
    },
    "Expiring/Expired Inventory": {
     "label": "Batching Expired Inventory",
+    "description": "Look up Batching Expired Inventory records - includes things like SKU Code, Batch Code, Shelf Code.",
     "anchor_table": "item_type",
     "anchor_alias": "it",
     "from_join_clause": "from item_type it\njoin item_type_inventory iti on it.id = iti.item_type_id\njoin batch b on iti.batch_id = b.id\njoin shelf s on s.id = iti.shelf_id\njoin category c on it.category_id=c.id",
@@ -1232,6 +1407,7 @@
   "PO": {
    "Purchase Orders": {
     "label": "Purchase Orders",
+    "description": "Look up Purchase Orders records - includes things like PO Code, Created, PO Created By.",
     "anchor_table": "purchase_order_item",
     "anchor_alias": "poi",
     "from_join_clause": "from purchase_order_item poi\njoin purchase_order po on poi.purchase_order_id = po.id\njoin user u on po.user_id = u.id\njoin vendor v on po.vendor_id = v.id\njoin party p on v.id = p.id\njoin item_type it on poi.item_type_id = it.id\nleft join tax_type tt on tt.id = it.gst_tax_type_id\njoin category c on it.category_id = c.id\njoin facility f on po.facility_id = f.id",
@@ -1345,7 +1521,9 @@
      "PO Created By",
      "PO Approved Date",
      "Delivery Date",
-     "Item Type Name"
+     "Item Type Name",
+     "Item SkuCode",
+     "HSN Code"
     ],
     "filters": [
      {
@@ -1407,6 +1585,7 @@
    },
    "GRN": {
     "label": "GRN",
+    "description": "Look up GRN records - includes things like GRN Code, GRN Date, GRN Created By.",
     "anchor_table": "inflow_receipt_item",
     "anchor_alias": "iri",
     "from_join_clause": "from inflow_receipt_item iri\nleft join batch b on iri.batch_id=b.id\njoin inflow_receipt ir on iri.inflow_receipt_id = ir.id\njoin user u on ir.user_id = u.id\njoin purchase_order_item poi on iri.purchase_order_item_id = poi.id\njoin item_type it on iri.item_type_id = it.id\njoin purchase_order po on poi.purchase_order_id = po.id\njoin vendor v on po.vendor_id = v.id\njoin party p on v.id = p.id\njoin category c on c.id=it.category_id\njoin facility f on ir.facility_id = f.id\nLEFT JOIN putaway_entity_mapping pem ON pem.inflow_receipt_id = ir.id\nLEFT JOIN putaway pu ON pu.id = pem.putaway_id",
@@ -1520,7 +1699,9 @@
      "GRN Created By",
      "Item SkuCode",
      "Item Type Name",
-     "Batch Code"
+     "Batch Code",
+     "Vendor SkuCode",
+     "Vendor Name"
     ],
     "filters": [
      {
@@ -1577,6 +1758,7 @@
    },
    "GRN-PO Mapping": {
     "label": "GRN-PO Mapping",
+    "description": "Look up GRN-PO Mapping records - includes things like GRN Code, GRN Date, GRN Created By.",
     "anchor_table": "inflow_receipt_item",
     "anchor_alias": "iri",
     "from_join_clause": "from inflow_receipt_item iri\nleft join batch b on iri.batch_id=b.id\njoin inflow_receipt ir on iri.inflow_receipt_id = ir.id\njoin user u on ir.user_id = u.id\njoin purchase_order_item poi on iri.purchase_order_item_id = poi.id\njoin item_type it on iri.item_type_id = it.id\njoin purchase_order po on poi.purchase_order_id = po.id\njoin vendor v on po.vendor_id = v.id\njoin party p on v.id = p.id\njoin category c on c.id=it.category_id\njoin facility f on ir.facility_id = f.id",
@@ -1690,7 +1872,9 @@
      "GRN Created By",
      "Item SkuCode",
      "Item Type Name",
-     "Vendor Batch Code"
+     "Vendor Batch Code",
+     "Vendor SkuCode",
+     "Vendor Name"
     ],
     "filters": [
      {
@@ -1742,6 +1926,7 @@
    },
    "Vendors": {
     "label": "Vendors",
+    "description": "Look up Vendors records - includes things like Vendor Code, Vendor Name, Created.",
     "anchor_table": "vendor",
     "anchor_alias": "v",
     "from_join_clause": "from vendor v\njoin party p on (v.id = p.id)\nleft join party_contact_type pct on (pct.code='PRIMARY')\nleft join party_contact pc on (pc.party_contact_type_id = pct.id and pc.party_id = p.id)\nleft join party_address_type addr1Type on (addr1Type.code='SHIPPING')\nleft join party_address addr1 on (addr1Type.id = addr1.party_address_type_id and addr1.party_id = p.id)\nleft join state addr1State on (addr1.state_code = addr1State.iso2_code and addr1State.country_code = addr1.country_code)\nleft join party_address_type addr2Type on (addr2Type.code='BILLING')\nleft join party_address addr2 on (addr2Type.id = addr2.party_address_type_id and addr2.party_id = p.id)\nleft join state addr2State on (addr2.state_code = addr2State.iso2_code and addr2State.country_code = addr2.country_code)\nleft join vendor_agreement va on (va.vendor_id = v.id  and va.name not like 'TRANSIT%')\nleft join user u on (u.id=v.user_id)",
@@ -1855,7 +2040,8 @@
      "Created",
      "Primary Contact Name",
      "Shipping Address Pincode",
-     "Billing Address Pincode"
+     "Billing Address Pincode",
+     "Agreement Name"
     ],
     "filters": [
      {
@@ -1880,6 +2066,7 @@
    },
    "Vendor Item Master": {
     "label": "Vendor Item Master",
+    "description": "Look up Vendor Item Master records - includes things like Product Code, Vendor Code, Vendor SkuCode.",
     "anchor_table": "vendor_item_type",
     "anchor_alias": "vit",
     "from_join_clause": "from vendor_item_type vit\njoin item_type it on vit.item_type_id = it.id\njoin vendor v on vit.vendor_id = v.id\njoin party p on v.id = p.id\njoin facility f on p.facility_id=f.id",
@@ -1973,6 +2160,7 @@
    },
    "Vendor Catalog": {
     "label": "Vendor Catalog",
+    "description": "Look up Vendor Catalog records - includes things like Product Code, Vendor Code, Vendor SkuCode.",
     "anchor_table": "vendor_item_type",
     "anchor_alias": "vit",
     "from_join_clause": "from vendor_item_type vit\njoin item_type it on vit.item_type_id = it.id\njoin vendor v on vit.vendor_id = v.id\njoin party p on v.id = p.id",
@@ -2073,6 +2261,7 @@
    },
    "Unwanted Purchase Orders": {
     "label": "Unwanted Purchase Orders",
+    "description": "Look up Unwanted Purchase Orders records - includes things like PO Code, Created, Vendor SkuCode.",
     "anchor_table": "purchase_order_item",
     "anchor_alias": "poi",
     "from_join_clause": "from purchase_order_item poi",
@@ -2158,7 +2347,9 @@
      "Vendor SkuCode",
      "Order Quantity",
      "Recieved Quantity",
-     "Rejected Quantity"
+     "Rejected Quantity",
+     "PO Approved Date",
+     "Pending Quantity"
     ],
     "filters": [
      {
@@ -2184,6 +2375,7 @@
    },
    "ASN": {
     "label": "ASN report",
+    "description": "Look up ASN report records - includes things like ASN_EXPECTED_DELIVERY_DATE, PO_CREATED , VENDOR_CODE .",
     "anchor_table": "purchase_order",
     "anchor_alias": "po",
     "from_join_clause": "from purchase_order po\njoin advance_shipping_notice asn on asn.purchase_order_id = po.id\njoin advance_shipping_notice_item asni on asni.advance_shipping_notice_id = asn.id\njoin purchase_order_item poi on poi.id = asni.purchase_order_item_id\njoin item_type it on it.id = poi.item_type_id\njoin party p on po.vendor_id = p.id",
@@ -2237,7 +2429,9 @@
      "VENDOR_CODE ",
      "ASN_CREATED ",
      "ASN_STATUS_CODE ",
-     "SKU_CODE "
+     "SKU_CODE ",
+     "ASN_QUANTITY ",
+     "PURCHASE_ORDER_ITEM_QUANTITY "
     ],
     "filters": [
      {
@@ -2276,6 +2470,7 @@
   "Inventory Syncing": {
    "Channel Item Type Sync": {
     "label": "Channel Item Type Report",
+    "description": "Look up Channel Item Type Report records - includes things like Channel Name, Product Name, Seller Sku Code.",
     "anchor_table": "channel_item_type",
     "anchor_alias": "cit",
     "from_join_clause": "from channel_item_type cit\nleft join item_type it on cit.item_type_id = it.id\nleft join channel_item_type_price citp on cit.id = citp.channel_item_type_id\nleft join channel ch on ch.id = cit.channel_id",
@@ -2341,7 +2536,9 @@
      "Seller Sku Code",
      "Uniware Sku Code",
      "Currency Code",
-     "Status Code"
+     "Status Code",
+     "Next Inventory Update",
+     "Last Inventory Update"
     ],
     "filters": [
      {
@@ -2356,6 +2553,7 @@
    },
    "Channel Sync Status": {
     "label": "Channel Sync Status",
+    "description": "Look up Channel Sync Status records - includes things like Source Code, Code, Inventory Sync Status.",
     "anchor_table": "channel",
     "anchor_alias": "channel",
     "from_join_clause": "FROM channel channel",
@@ -2401,15 +2599,31 @@
      "Inventory Sync Status",
      "Catalog Sync Status",
      "Order Sync Status",
-     "Pricing Sync Status"
+     "Pricing Sync Status",
+     "Reconciliation Sync Status"
     ],
-    "filters": [],
-    "quick_filters": []
+    "filters": [
+     {
+      "label": "Code contains",
+      "condition": "channel.code LIKE CONCAT('%', :codeContains, '%')",
+      "type": "text"
+     },
+     {
+      "label": "Name contains",
+      "condition": "channel.name LIKE CONCAT('%', :nameContains, '%')",
+      "type": "text"
+     }
+    ],
+    "quick_filters": [
+     "Code contains",
+     "Name contains"
+    ]
    }
   },
   "Facility": {
    "Facility": {
     "label": "Facility",
+    "description": "Look up Facility records - includes things like Facility Code, Facility Name, Facility Display Name.",
     "anchor_table": "facility",
     "anchor_alias": "f",
     "from_join_clause": "from facility f\njoin party p on f.id = p.id\njoin party_address pa1 on pa1.party_id = p.id\njoin party_address_type pat1 on pat1.id = pa1.party_address_type_id and pat1.code = 'BILLING'\nleft join state s1 on (s1.iso2_code = pa1.state_code and s1.country_code = pa1.country_code)\njoin country c1 on c1.code = pa1.country_code\njoin party_address pa2 on pa2.party_id = p.id\njoin party_address_type pat2 on pat2.id = pa2.party_address_type_id and pat2.code = 'SHIPPING'\nleft join state s2 on (s2.iso2_code = pa2.state_code and s2.country_code = pa2.country_code)\njoin country c2 on c2.code = pa2.country_code\nLEFT JOIN gst_einvoice_seller_credentials gesc ON p.id = gesc.party_id",
@@ -2549,6 +2763,7 @@
    },
    "Facility Alias": {
     "label": "Facility Alias",
+    "description": "Look up Facility Alias records - includes things like Facility Code, Facility Name, Party Name.",
     "anchor_table": "facility_alias",
     "anchor_alias": "fa",
     "from_join_clause": "from facility_alias fa\nleft join facility f on f.`id` = fa.`facility_id`\nleft join party p on p.`id` = f.`id`",
@@ -2613,6 +2828,7 @@
    },
    "Facility Time Slot": {
     "label": "Facility Time Slot",
+    "description": "Look up Facility Time Slot records - includes things like Facility Code, Facility Slot Display Name, Facility Slot Start Time as HH:mm:ss.",
     "anchor_table": "facility_time_slot",
     "anchor_alias": "ft",
     "from_join_clause": "from facility_time_slot ft\nleft join facility f on f.id = ft.facility_id\nleft join party p on p.id = ft.facility_id",
@@ -2638,7 +2854,8 @@
     ],
     "quick_fields": [
      "Facility Code",
-     "Facility Slot Display Name"
+     "Facility Slot Display Name",
+     "Facility Slot Start Time as HH:mm:ss"
     ],
     "filters": [
      {
@@ -2653,6 +2870,7 @@
    },
    "Facility Allocation Rules": {
     "label": "Facility Allocation Rules",
+    "description": "Look up Facility Allocation Rules records - includes things like Rule name, Facility Code, Expression.",
     "anchor_table": "facility_allocation_rule",
     "anchor_alias": "fa",
     "from_join_clause": "FROM facility_allocation_rule fa\nleft join party p on p.id = fa.facility_id\nleft join tenant t on t.id = fa.tenant_id",
@@ -2686,13 +2904,15 @@
     ],
     "quick_fields": [
      "Rule name",
-     "Facility Code"
+     "Facility Code",
+     "Expression"
     ],
     "filters": [],
     "quick_filters": []
    },
    "Facility Enable": {
     "label": "Facility Enable",
+    "description": "Look up Facility Enable records - includes things like Facility Code, Facility Name, Facility Display Name.",
     "anchor_table": "facility",
     "anchor_alias": "f",
     "from_join_clause": "from facility f\njoin party p on f.id = p.id\njoin party_address pa1 on pa1.party_id = p.id\njoin party_address_type pat1 on pat1.id = pa1.party_address_type_id and pat1.code = 'BILLING'\nleft join state s1 on (s1.iso2_code = pa1.state_code and s1.country_code = pa1.country_code)\njoin country c1 on c1.code = pa1.country_code\njoin party_address pa2 on pa2.party_id = p.id\njoin party_address_type pat2 on pat2.id = pa2.party_address_type_id and pat2.code = 'SHIPPING'\nleft join state s2 on (s2.iso2_code = pa2.state_code and s2.country_code = pa2.country_code)\njoin country c2 on c2.code = pa2.country_code",
@@ -2818,6 +3038,7 @@
   "SKU & Category": {
    "Item Master": {
     "label": "Item Master",
+    "description": "Look up Item Master records - includes things like Category Code, Product Code, Name.",
     "anchor_table": "item_type",
     "anchor_alias": "i",
     "from_join_clause": "from item_type i\nleft join batch_group bg on i.batch_group_id = bg.id\nleft join bundle b on (i.id = b.item_type_id)\nleft join bundle_item_type bit on (bit.bundle_id = b.id)\nleft join item_type bi on (bit.item_type_id = bi.id)\nleft join tax_type tt on i.tax_type_id = tt.id\nleft join tax_type gst on gst.id = i.gst_tax_type_id\njoin category c on i.category_id = c.id",
@@ -2965,6 +3186,7 @@
    },
    "Item Barcodes": {
     "label": "Item Barcodes",
+    "description": "Look up Item Barcodes records - includes things like Item Code, Item Created On, Item Updated On.",
     "anchor_table": "item",
     "anchor_alias": "i",
     "from_join_clause": "from item i\njoin item_type it on i.item_type_id=it.id\njoin category c on it.category_id=c.id\nleft join inflow_receipt_item iri on iri.id=i.inflow_receipt_item_id\nleft join inflow_receipt ir on iri.inflow_receipt_id=ir.id\nleft join shelf s on s.id = i.shelf_id\nleft join purchase_order_item poi on poi.id = iri.purchase_order_item_id",
@@ -3058,7 +3280,9 @@
      "Item Updated On",
      "Item Status",
      "Shelf Code",
-     "Item Type Name"
+     "Item Type Name",
+     "Item Type skuCode",
+     "Vendor skuCode"
     ],
     "filters": [
      {
@@ -3099,6 +3323,7 @@
    },
    "Category": {
     "label": "Category",
+    "description": "Look up Category records - includes things like Category Code, Category Name, HSN Code.",
     "anchor_table": "category",
     "anchor_alias": "c",
     "from_join_clause": "from category c\nleft join tax_type gst on c.gst_tax_type_id = gst.id\nleft join tax_type tt on c.tax_type_id = tt.id",
@@ -3187,6 +3412,7 @@
    },
    "Category Section Mapping": {
     "label": "Category Section Mapping",
+    "description": "Look up Category Section Mapping records - includes things like Category Code, Section Code, Enabled.",
     "anchor_table": "category_section_mapping",
     "anchor_alias": "csm",
     "from_join_clause": "from category_section_mapping csm\nleft join category c on csm.category_id = c.id\nleft join section s on csm.section_id = s.id",
@@ -3208,13 +3434,15 @@
     ],
     "quick_fields": [
      "Category Code",
-     "Section Code"
+     "Section Code",
+     "Enabled"
     ],
     "filters": [],
     "quick_filters": []
    },
    "Dropship Facility Item Master": {
     "label": "Dropship Facility Item Master",
+    "description": "Look up Dropship Facility Item Master records - includes things like Item Type Name, Product Code, Facility SkuCode.",
     "anchor_table": "item_type",
     "anchor_alias": "it",
     "from_join_clause": "from item_type it\njoin facility_item_type fit on fit.item_type_id = it.id\njoin category c on c.id = it.category_id\njoin facility f on f.id = fit.facility_id\njoin party p on p.id = f.id",
@@ -3316,6 +3544,7 @@
    },
    "Tax Type Configuration": {
     "label": "Tax Type Configuration",
+    "description": "Look up Tax Type Configuration records - includes things like Tax Type Code, State Code, VAT.",
     "anchor_table": "tax_type",
     "anchor_alias": "tt",
     "from_join_clause": "from tax_type tt\njoin tax_type_configuration ttc on tt.id = ttc.tax_type_id\njoin tax_type_configuration_range ttcr on ttc.id=ttcr.tax_type_configuration_id",
@@ -3381,7 +3610,8 @@
     ],
     "quick_fields": [
      "Tax Type Code",
-     "State Code"
+     "State Code",
+     "VAT"
     ],
     "filters": [
      {
@@ -3403,6 +3633,7 @@
   "Users": {
    "Users": {
     "label": "Users",
+    "description": "Look up Users records - includes things like Name, User Name, Created.",
     "anchor_table": "user",
     "anchor_alias": "u",
     "from_join_clause": "from user u\njoin user_role ur on ur.user_id = u.id\nleft join role r on r.id = ur.role_id\nleft join facility f on f.id = ur.facility_id",
@@ -3488,6 +3719,7 @@
    },
    "Users Detailed View": {
     "label": "Users detailed view",
+    "description": "Look up Users detailed view records - includes things like Name, User Name, Email.",
     "anchor_table": "user",
     "anchor_alias": "u",
     "from_join_clause": "from user u\njoin tenant t on t.id = u.tenant_id",
@@ -3533,7 +3765,8 @@
     ],
     "quick_fields": [
      "Name",
-     "User Name"
+     "User Name",
+     "Email"
     ],
     "filters": [
      {
@@ -3579,6 +3812,7 @@
    },
    "User Comments": {
     "label": "User Comments",
+    "description": "Look up User Comments records - includes things like Username, Created, Entity Reference.",
     "anchor_table": "user_comment",
     "anchor_alias": "uc",
     "from_join_clause": "FROM user_comment uc",
@@ -3604,7 +3838,8 @@
     ],
     "quick_fields": [
      "Username",
-     "Created"
+     "Created",
+     "Entity Reference"
     ],
     "filters": [
      {
@@ -3629,6 +3864,7 @@
    },
    "Role": {
     "label": "Role",
+    "description": "Look up roles and their access levels - includes PII access roles (e.g. codes like PII_ADMIN), permission levels, and role descriptions.",
     "anchor_table": "role",
     "anchor_alias": "role",
     "from_join_clause": "FROM role role",
@@ -3678,11 +3914,26 @@
      "Created",
      "Updated"
     ],
-    "filters": [],
-    "quick_filters": []
+    "filters": [
+     {
+      "label": "Code contains",
+      "condition": "role.code LIKE CONCAT('%', :codeContains, '%')",
+      "type": "text"
+     },
+     {
+      "label": "Name contains",
+      "condition": "role.name LIKE CONCAT('%', :nameContains, '%')",
+      "type": "text"
+     }
+    ],
+    "quick_filters": [
+     "Code contains",
+     "Name contains"
+    ]
    },
    "Access Resource": {
     "label": "Access Resource",
+    "description": "Look up individual access resources/permissions (URLs, APIs, UI tabs) that can be granted to a role.",
     "anchor_table": "access_resource",
     "anchor_alias": "access_resource",
     "from_join_clause": "FROM access_resource access_resource",
@@ -3719,11 +3970,20 @@
      "Created",
      "Updated"
     ],
-    "filters": [],
-    "quick_filters": []
+    "filters": [
+     {
+      "label": "Name contains",
+      "condition": "access_resource.name LIKE CONCAT('%', :nameContains, '%')",
+      "type": "text"
+     }
+    ],
+    "quick_filters": [
+     "Name contains"
+    ]
    },
    "Role -> Access Resource Mapping": {
     "label": "Role Access Resource Mapping",
+    "description": "See which access resources/permissions are granted to which role - use this to check what a role (including PII-related roles) can access.",
     "anchor_table": "role_access_resource",
     "anchor_alias": "role_access_resource",
     "from_join_clause": "FROM role_access_resource role_access_resource",
@@ -3767,6 +4027,7 @@
   "Putaway": {
    "Putaway": {
     "label": "Putaway",
+    "description": "Look up Putaway records - includes things like Shelf Code, Putaway Code, Created.",
     "anchor_table": "putaway_item",
     "anchor_alias": "pui",
     "from_join_clause": "from putaway_item pui\njoin putaway pu on pui.putaway_id=pu.id\nleft join batch b on pui.batch_id=b.id\nleft join shelf s on pui.shelf_id = s.id\njoin item_type it on it.id=pui.item_type_id\njoin user u on u.id=pu.user_id\njoin category c on c.id=it.category_id",
@@ -3836,7 +4097,9 @@
      "Created",
      "Created By",
      "Item Type skuCode",
-     "Name"
+     "Name",
+     "Putaway Quantity",
+     "Status Code"
     ],
     "filters": [
      {
@@ -3878,6 +4141,7 @@
    },
    "GRN/Gatepass to Putaway": {
     "label": "GRN/Gatepass to Putaway",
+    "description": "Look up GRN/Gatepass to Putaway records - includes things like Putaway Code, Product Name, SKU Code.",
     "anchor_table": "putaway_item",
     "anchor_alias": "pui",
     "from_join_clause": "from putaway_item pui\njoin putaway pu on pui.putaway_id = pu.id\nleft join batch b on pui.batch_id = b.id\nleft join shelf s on pui.shelf_id = s.id\njoin item_type it on it.id = pui.item_type_id\njoin user u on u.id = pu.user_id\njoin category c on c.id = it.category_id\nleft join putaway_entity_mapping pem on pem.putaway_id = pu.id\nleft join inflow_receipt ir on ir.id = pem.inflow_receipt_id\nleft join outbound_gate_pass ogp on ogp.id = pem.outbound_gate_pass_id",
@@ -3951,7 +4215,9 @@
      "SKU Code",
      "Status Code",
      "Quantity",
-     "Created By"
+     "Created By",
+     "Created",
+     "Last Updated"
     ],
     "filters": [
      {
@@ -3983,6 +4249,7 @@
    },
    "Pending Putaways": {
     "label": "Pending Putaways New",
+    "description": "Look up Pending Putaways New records - includes things like SKU Code, Picklist, Count of SKU.",
     "anchor_table": "shipping_package",
     "anchor_alias": "sp",
     "from_join_clause": "from shipping_package sp\njoin sale_order so on sp.sale_order_id = so.id\njoin channel c on so.channel_id = c.id\njoin address_detail ad on ad.id = sp.shipping_address_id\nleft join state st on (st.iso2_code = ad.state_code and st.country_code = ad.country_code)\nleft join shipping_package_type spt on sp.shipping_package_type_id = spt.id\nleft join sale_order_item soi on soi.shipping_package_id = sp.id\nleft join invoice inv on sp.invoice_id = inv.id\nleft join item_type it on (soi.item_type_id = it.id)\nleft join picklist pl on (pi.picklist_id=pl.id)",
@@ -4015,7 +4282,9 @@
      }
     ],
     "quick_fields": [
-     "SKU Code"
+     "SKU Code",
+     "Picklist",
+     "Count of SKU"
     ],
     "filters": [
      {
@@ -4099,6 +4368,7 @@
   "Returns": {
    "Reverse Pickup": {
     "label": "Reverse Pickup",
+    "description": "Look up Reverse Pickup records - includes things like Sale Order Item Code, Original Sale Order Code, Item Name.",
     "anchor_table": "reverse_pickup_item",
     "anchor_alias": "rpi",
     "from_join_clause": "from reverse_pickup_item rpi\njoin sale_order_item soi on rpi.sale_order_item_id=soi.id\njoin sale_order so on so.id = soi.sale_order_id\njoin channel ch on so.channel_id=ch.id\njoin item_type it on soi.item_type_id=it.id\njoin reverse_pickup rp on rp.sale_order_id=so.id and rpi.reverse_pickup_id=rp.id\njoin reverse_pickup_action rpa on rp.action_code=rpa.code\njoin shipping_package sp on soi.shipping_package_id=sp.id\nleft join sale_order rso on rp.replacement_sale_order_id = rso.id\nleft join shipment_tracking shp on rp.shipment_tracking_id = shp.id\nleft join putaway pt on rp.putaway_id=pt.id",
@@ -4204,7 +4474,9 @@
      "Item Name",
      "Item SkuCode",
      "Dispatched Date",
-     "Reverse Pickup Created"
+     "Reverse Pickup Created",
+     "Reverse Pickup Last Updated",
+     "Reverse Pickup Status"
     ],
     "filters": [
      {
@@ -4224,6 +4496,7 @@
    },
    "Reverse Pickup Payments": {
     "label": "Reverse Pickup Payments",
+    "description": "Look up Reverse Pickup Payments records - includes things like Sale Order Item Code, Sale Order Code, Reverse Pickup Code.",
     "anchor_table": "reverse_pickup",
     "anchor_alias": "rp",
     "from_join_clause": "from reverse_pickup rp\njoin sale_order so on so.id = rp.sale_order_id\njoin sale_order_item soi on soi.reverse_pickup_id = rp.id\nleft join sale_order replacement_so on replacement_so.id = rp.replacement_sale_order_id",
@@ -4304,6 +4577,7 @@
    },
    "Return Manifest": {
     "label": "Return Manifest",
+    "description": "Look up Return Manifest records - includes things like Return Manifest Code, Return Manifest Status, Created By.",
     "anchor_table": "return_manifest_item",
     "anchor_alias": "rmi",
     "from_join_clause": "from return_manifest_item rmi\njoin return_manifest rm on rmi.return_manifest_id = rm.id\njoin \n\t\t\tshipping_package sp on rmi.shipping_package_id = sp.id\njoin sale_order so on sp.sale_order_id=so.id\njoin channel ch on so.channel_id=ch.id\njoin \n\t\t\tuser u on rm.user_id = u.id\nleft join reshipment rs on rs.id=sp.reshipment_id",
@@ -4377,7 +4651,9 @@
      "Created By",
      "Created At",
      "Shipping Package Code",
-     "Sale Order Code"
+     "Sale Order Code",
+     "Customer Name",
+     "Shipping Package Status"
     ],
     "filters": [
      {
@@ -4412,6 +4688,7 @@
    },
    "Return Invoices": {
     "label": "Return Invoices",
+    "description": "Look up Return Invoices records - includes things like Invoice Code, Return Invoice Code, Shipping Package Code.",
     "anchor_table": "sale_order_item",
     "anchor_alias": "soi",
     "from_join_clause": "FROM sale_order_item soi\njoin sale_order so on (soi.`sale_order_id` = so.`id`)\njoin item_type it on soi.`item_type_id` = it.`id`\nleft join shipping_package sp on soi.`shipping_package_id` = sp.`id`\nleft join invoice inv on inv.id=sp.invoice_id\nleft join invoice_item invt on  invt.id = soi.invoice_item_id\nleft join invoice invr on invr.id = sp.return_invoice_id\nleft join return_manifest_item rmi on sp.id = rmi.shipping_package_id\nleft join facility f on soi.facility_id = f.id",
@@ -4505,7 +4782,9 @@
      "Shipping Package Code",
      "Shipping Package Status Code",
      "Return Date",
-     "Customer Name"
+     "Customer Name",
+     "Item SKU Code",
+     "Item Type Name"
     ],
     "filters": [
      {
@@ -4582,6 +4861,7 @@
    },
    "Courier Returns": {
     "label": "Courier Returns",
+    "description": "Look up Courier Returns records - includes things like Shipping Package Code, Shipping Package Status, Return Manifest Code.",
     "anchor_table": "sale_order",
     "anchor_alias": "so",
     "from_join_clause": "from sale_order so\njoin shipping_package sp on so.id = sp.sale_order_id\n            inner\njoin shipment_tracking_status sts on sts.code = sp.shipment_tracking_status_code\n            inner\njoin shipping_package_status sps on sps.id = sts.shipping_package_status_id and sps.code = 'RETURN_EXPECTED'\nleft join reshipment re on so.id = re.sale_order_id\nleft join reshipment_action rpa on rpa.code = re.action_code\nleft join channel c on c.id = so.channel_id\nleft join return_manifest_item rmi on rmi.shipping_package_id = sp.id\nleft join return_manifest rm on rm.id = rmi.return_manifest_id\nleft join user rm_u on rm_u.id = rm.user_id\nleft join putaway p on p.id = sp.courier_return_putaway_id and p.type = 'PUTAWAY_COURIER_RETURNED_ITEMS'\nleft join user p_u on p_u.id = p.user_id\njoin facility f on f.id = sp.facility_id\nleft join facility  rf on rf.id = sp.return_facility_id",
@@ -4663,7 +4943,9 @@
      "Return Manifest Code",
      "Return Manifest Status",
      "Return Manifest Created By",
-     "Return Manifest Created At"
+     "Return Manifest Created At",
+     "Putaway Status",
+     "Putaway Date"
     ],
     "filters": [
      {
@@ -4693,6 +4975,7 @@
    },
    "Putback Pending": {
     "label": "Putback Pending All Facility",
+    "description": "Look up Putback Pending All Facility records - includes things like ChannelColorCode, ChannelShortName, channelName.",
     "anchor_table": "shipping_package",
     "anchor_alias": "sp",
     "from_join_clause": "from shipping_package sp\njoin sale_order so on sp.sale_order_id = so.id\njoin channel c on so.channel_id = c.id\njoin address_detail ad on ad.id = sp.shipping_address_id\nleft join state st on (st.iso2_code = ad.state_code and st.country_code = ad.country_code)\nleft join shipping_package_type spt on sp.shipping_package_type_id = spt.id\nleft join sale_order_item soi on soi.sale_order_id = so.id\nleft join invoice inv on sp.invoice_id = inv.id\nleft join item_type it on (soi.item_type_id = it.id)\nleft join picklist pl on (pi.picklist_id=pl.id)\nleft join facility fa on soi.facility_id = fa.id\nleft join invoice_item invt on invt.id = soi.invoice_item_id\nleft join party pa on pa.id = fa.id\nleft join item_type_inventory iti on soi.item_type_inventory_id = iti.id\nleft join shelf sh on iti.shelf_id = sh.id\nleft join batch ba on ba.id = iti.batch_id",
@@ -4888,6 +5171,7 @@
    },
    "Not Found Audit": {
     "label": "NotFoundAuditExport",
+    "description": "Look up NotFoundAuditExport records - includes things like SKU Code, SKU Name, Shelf Code.",
     "anchor_table": "not_found_audit",
     "anchor_alias": "nfa",
     "from_join_clause": "FROM not_found_audit nfa",
@@ -4982,6 +5266,7 @@
   "Work Order / Kitting / Roll-up SKU": {
    "Work Order": {
     "label": "Work Order",
+    "description": "Look up Work Order records - includes things like Code, Status Code, Quantity.",
     "anchor_table": "work_order",
     "anchor_alias": "work_order",
     "from_join_clause": "FROM work_order work_order",
@@ -5095,13 +5380,24 @@
      "Quantity",
      "Manufacturing Date",
      "Expiry Date",
-     "Created"
+     "Created",
+     "Updated",
+     "Completed Quantity"
     ],
-    "filters": [],
-    "quick_filters": []
+    "filters": [
+     {
+      "label": "Code contains",
+      "condition": "work_order.code LIKE CONCAT('%', :codeContains, '%')",
+      "type": "text"
+     }
+    ],
+    "quick_filters": [
+     "Code contains"
+    ]
    },
    "Kit Composition": {
     "label": "Kit Composition",
+    "description": "Look up Kit Composition records - includes things like Quantity, Created, Updated.",
     "anchor_table": "kit_item_type",
     "anchor_alias": "kit_item_type",
     "from_join_clause": "FROM kit_item_type kit_item_type",
@@ -5147,6 +5443,7 @@
    },
    "Bundle": {
     "label": "Bundle",
+    "description": "Look up Bundle records - includes things like Code, Created, Updated.",
     "anchor_table": "bundle",
     "anchor_alias": "bundle",
     "from_join_clause": "FROM bundle bundle",
@@ -5187,11 +5484,20 @@
      "Created",
      "Updated"
     ],
-    "filters": [],
-    "quick_filters": []
+    "filters": [
+     {
+      "label": "Code contains",
+      "condition": "bundle.code LIKE CONCAT('%', :codeContains, '%')",
+      "type": "text"
+     }
+    ],
+    "quick_filters": [
+     "Code contains"
+    ]
    },
    "Bundle Items (Roll-up SKU)": {
     "label": "Bundle Items",
+    "description": "Look up Bundle Items records - includes things like Quantity, Created, Updated.",
     "anchor_table": "bundle_item_type",
     "anchor_alias": "bundle_item_type",
     "from_join_clause": "FROM bundle_item_type bundle_item_type",
@@ -5243,6 +5549,7 @@
   "Shipping Package": {
    "Shipping Package": {
     "label": "Shipping Package",
+    "description": "Look up Shipping Package records - includes things like Status, Invoice Code, Shipping Address Name.",
     "anchor_table": "shipping_package",
     "anchor_alias": "sp",
     "from_join_clause": "from shipping_package sp\nleft join sale_order so on sp.sale_order_id = so.id\nleft join channel c on so.channel_id= c.id\nleft join pick_set ps on sp.pick_set_id = ps.id\nleft join pick_bucket_slot pbs on pbs.shipping_package_id = sp.id\nleft join invoice inv on inv.id=sp.invoice_id\nleft join shipping_method sm on sp.shipping_method_id = sm.id\nleft join address_detail addr on sp.shipping_address_id = addr.id\nleft join shipping_manifest_item shmi on shmi.shipping_package_id=sp.id\nleft join shipping_manifest shm on shmi.shipping_manifest_id=shm.id\nleft join return_manifest_item rmi on rmi.shipping_package_id=sp.id\nleft join return_manifest rm on rmi.return_manifest_id=rm.id\nleft join shipping_package_type spt on spt.id = sp.shipping_package_type_id\nleft join picklist pl on pbs.picklist_id = pl.id",
@@ -5407,6 +5714,7 @@
    },
    "Picklist": {
     "label": "Picklist",
+    "description": "Look up Picklist records - includes things like Picklist Code, Sale Order Item Code, Shipping Package Code.",
     "anchor_table": "picklist",
     "anchor_alias": "p",
     "from_join_clause": "from picklist p\njoin picklist_item pi on pi.picklist_id = p.id\njoin sale_order so on pi.sale_order_code =so.code\njoin user u on u.id = p.user_id\njoin item_type it on (it.sku_code = pi.sku_code and it.tenant_id = :tenantId)\nleft join batch b on (b.code=pi.batch_code and b.tenant_id = :tenantId)",
@@ -5472,7 +5780,9 @@
      "Shipping Package Code",
      "Sale Order Code",
      "Item SkuCode",
-     "Item Type Name"
+     "Item Type Name",
+     "Shelf Code",
+     "Picklist Created By"
     ],
     "filters": [
      {
@@ -5529,6 +5839,7 @@
    },
    "Invoice": {
     "label": "Invoice",
+    "description": "Look up Invoice records - includes things like Shipping Package Code, Shipping Package Status Code, Invoice Created Date.",
     "anchor_table": "sale_order_item",
     "anchor_alias": "soi",
     "from_join_clause": "from sale_order_item soi\nleft join invoice_item invi on invi.id = soi.invoice_item_id\nleft join invoice_item_tax invit on invi.id = invit.invoice_item_id\nleft join invoice inv on inv.id = invi.invoice_id\nleft join shipping_package sp on sp.invoice_id = inv.id\njoin sale_order so on so.id = sp.sale_order_id\njoin item_type it on it.id = invi.item_type_id\njoin category c on it.category_id = c.id\nleft join tax_type tt on (tt.id = it.gst_tax_type_id or tt.id = c.gst_tax_type_id)\nleft join channel ch on ch.id = so.channel_id",
@@ -5642,7 +5953,9 @@
      "Invoice Created Date",
      "Channel Invoice Created Date",
      "Customer Name",
-     "SKU Code"
+     "SKU Code",
+     "SKU Name",
+     "Quantity"
     ],
     "filters": [
      {
@@ -5674,6 +5987,7 @@
    },
    "Shipping Manifest": {
     "label": "Shipping Manifest",
+    "description": "Look up Shipping Manifest records - includes things like Channel name, Manifest Status, Created.",
     "anchor_table": "shipping_manifest_item",
     "anchor_alias": "smi",
     "from_join_clause": "from shipping_manifest_item smi\njoin shipping_manifest shm on smi.shipping_manifest_id = shm.id\njoin channel ch on shm.channel_id = ch.id\njoin shipping_package sp on smi.shipping_package_id = sp.id\njoin address_detail ad on ad.id = sp.shipping_address_id\njoin shipping_package_type spt on sp.shipping_package_type_id=spt.id\njoin sale_order so on so.id = sp.sale_order_id\njoin user u on shm.user_id = u.id",
@@ -5775,7 +6089,8 @@
      "Created",
      "Shipping Provider Name",
      "Username",
-     "Shipping Package Code"
+     "Shipping Package Code",
+     "Updated"
     ],
     "filters": [
      {
@@ -5806,6 +6121,7 @@
    },
    "Box / Packslip": {
     "label": "Box Packslip Report",
+    "description": "Look up Box Packslip Report records - includes things like Shipping Package Code, Sku Code, HSN Code.",
     "anchor_table": "box_item",
     "anchor_alias": "bi",
     "from_join_clause": "from box_item bi\nleft join box b on bi.box_id = b.id\nleft join sale_order_item soi on soi.id = bi.sale_order_item_id\nleft join sale_order so on so.id = soi.sale_order_id\nleft join item_type it on it.id = soi.item_type_id\nleft join shipping_package sp on sp.id = soi.shipping_package_id\nleft join invoice inv on inv.id = sp.invoice_id\nleft join channel ch on ch.id = so.channel_id",
@@ -5897,6 +6213,7 @@
    },
    "Gatepass": {
     "label": "Gatepass",
+    "description": "Look up Gatepass records - includes things like Gatepass Code, Gatepass Created By, Gatepass Status.",
     "anchor_table": "outbound_gate_pass_item",
     "anchor_alias": "ogpi",
     "from_join_clause": "from outbound_gate_pass_item ogpi\nleft join shelf s on ogpi.shelf_id = s.id\nleft join outbound_gate_pass ogp on ogpi.outbound_gate_pass_id = ogp.id\nleft join gate_pass_order gpo on ogp.gate_pass_order_id = gpo.id\nleft join party p on p.id = ogp.to_party_id\nleft join item_type it on ogpi.item_type_id = it.id\nleft join user u on u.id = ogp.user_id\nLEFT JOIN batch b ON ogpi.batch_id = b.id\nLEFT JOIN party p1 ON ogp.facility_id = p1.id",
@@ -6010,7 +6327,9 @@
      "Gatepass Status",
      "Gatepass Created At",
      "Gatepass Updated At",
-     "Item Name"
+     "Item Name",
+     "Item SkuCode",
+     "HSN Code"
     ],
     "filters": [
      {
@@ -6051,6 +6370,7 @@
    },
    "Inbound Gatepass": {
     "label": "Inbound GatePass",
+    "description": "Look up Inbound GatePass records - includes things like Code, Username, Created At.",
     "anchor_table": "inbound_gate_pass",
     "anchor_alias": "igp",
     "from_join_clause": "from inbound_gate_pass igp\njoin facility f on igp.facility_id = f.id\nleft join user u on u.id = igp.user_id\nleft join party p on p.id = igp.party_id",
@@ -6126,6 +6446,7 @@
   "Reports": {
    "Transaction Ledger": {
     "label": "Transaction Ledger",
+    "description": "Look up Transaction Ledger records - includes things like SKU Code, SKU Name, Entity Code.",
     "anchor_table": "inflow_receipt_item",
     "anchor_alias": "iri",
     "from_join_clause": "FROM  inflow_receipt_item iri\nJOIN  inflow_receipt ir ON ir.id = iri.inflow_receipt_id\njoin  putaway_entity_mapping pem on pem.inflow_receipt_id = ir.id\njoin  putaway pu on pu.id = pem.putaway_id\nJOIN  putaway_item pi on pu.id = pi.putaway_id\nJOIN  facility f ON f.id = ir.facility_id\nJOIN  item_type it ON it.id = iri.item_type_id\njoin  tenant t ON t.id = it.tenant_id\njoin putaway_entity_mapping pem on pem.outbound_gate_pass_id = ogp.id\njoin putaway pu on pu.id = pem.putaway_id\njoin putaway_item pui on pui.putaway_id = pu.id\nleft JOIN facility in_f ON in_f.id = ogp.to_party_id\nleft JOIN facility out_f ON out_f.id = ogp.facility_id\nJOIN item_type it ON it.id = pui.item_type_id\njoin tenant t ON t.id = it.tenant_id\njoin  sale_order_item soi on soi.id = cri.sale_order_item_id\njoin  item_type it on it.id = soi.item_type_id\njoin  putaway pu on pu.id = cri.putaway_id\njoin  facility f on f.id = pu.facility_id\njoin  tenant t ON t.id = it.tenant_id\nleft join  invoice_item ii on ii.id = soi.return_invoice_item_id\njoin  invoice i on i.id = ii.invoice_id\njoin  reverse_pickup rp on rp.id = rpi.reverse_pickup_id\njoin  sale_order_item soi on soi.id = rpi.sale_order_item_id\njoin  item_type it on it.id = soi.item_type_id\njoin  putaway pu on pu.id = rpi.putaway_id\njoin  facility f on f.id = pu.facility_id\njoin  tenant t ON t.id = it.tenant_id\njoin  putaway pu on pu.id = pi.putaway_id\njoin  item_type it on it.id = pi.item_type_id\njoin  facility f on f.id = pu.facility_id\njoin  tenant t ON t.id = it.tenant_id\njoin  invoice i on ii.invoice_id = i.id\nleft join shipping_package sp on sp.invoice_id = i.id\nleft join picklist_item pi on pi.shipping_package_code = sp.code\nleft join picklist p on (pi.picklist_id = p.id and p.facility_id = i.facility_id)\njoin  item_type it on it.id = ii.item_type_id\njoin  facility f on f.id = i.facility_id\njoin  tenant t ON t.id = it.tenant_id\njoin  facility f on f.id = ia.facility_id\nleft join  party p ON p.id = ia.facility_id\njoin  tenant t ON t.id = p.tenant_id\nJOIN  item_type it ON it.id = ogpi.item_type_id\nJOIN  outbound_gate_pass ogp ON ogp.id = ogpi.outbound_gate_pass_id\nleft join  putaway_entity_mapping pem on pem.outbound_gate_pass_id = ogp.id\nleft join  putaway pu on pu.id = pem.putaway_id\nleft JOIN  facility in_f ON in_f.id = ogp.to_party_id\nleft JOIN  facility out_f ON out_f.id = ogp.facility_id\nleft join  tenant t ON t.id = it.tenant_id\njoin  shipping_package sp on sp.id = soi.shipping_package_id\nJOIN  item_type it ON it.id = soi.item_type_id\nJOIN  item i ON i.id = soi.item_id\nJOIN  facility f ON f.id = soi.facility_id\njoin  tenant t on sp.tenant_id = t.id\nleft join  putaway p on p.id = pi.putaway_id\nleft join  item_type it on it.id = pi.item_type_id\nleft JOIN  facility f ON f.id = p.facility_id\nleft join  tenant t ON t.id = it.tenant_id\nleft join item_type it on iti.item_type_id = it.id\nleft join facility f on f.id = iti.facility_id\nleft join tenant t on t.id = it.tenant_id\nleft join shelf s on s.id = iti.shelf_id\nleft join picklist pl on pli.picklist_id = pl.id\nleft join item_type it on pli.sku_code = it.sku_Code\nleft join shipping_package sp on sp.code = pli.shipping_package_code\nleft join invoice inv on sp.invoice_id = inv.id\nleft join facility f on f.id = pl.facility_id\nleft join tenant t on t.id = it.tenant_id\nleft join putaway pu on pui.putaway_id = pu.id\njoin  item_type it on it.id = pui.item_type_id\njoin  facility f on f.id = pu.facility_id\njoin  tenant t ON t.id = it.tenant_id",
@@ -6200,8 +6521,86 @@
      "Added in Date Range"
     ]
    },
+   "Facility Transaction Ledger": {
+    "label": "Facility Transaction Ledger",
+    "description": "Look up Facility Transaction Ledger records - includes things like SKU Code, SKU Name, Entity Code.",
+    "anchor_table": "inflow_receipt_item",
+    "anchor_alias": "iri",
+    "from_join_clause": "FROM  inflow_receipt_item iri\nJOIN  inflow_receipt ir ON ir.id = iri.inflow_receipt_id\njoin  putaway_entity_mapping pem on pem.inflow_receipt_id = ir.id\njoin  putaway pu on pu.id = pem.putaway_id\nJOIN  putaway_item pi on pu.id = pi.putaway_id\nJOIN  facility f ON f.id = ir.facility_id\nJOIN  item_type it ON it.id = iri.item_type_id\njoin  tenant t ON t.id = it.tenant_id\njoin putaway_entity_mapping pem on pem.outbound_gate_pass_id = ogp.id\njoin putaway pu on pu.id = pem.putaway_id\njoin putaway_item pui on pui.putaway_id = pu.id\nleft JOIN facility in_f ON in_f.id = ogp.to_party_id\nleft JOIN facility out_f ON out_f.id = ogp.facility_id\nJOIN item_type it ON it.id = pui.item_type_id\njoin tenant t ON t.id = it.tenant_id\njoin  sale_order_item soi on soi.id = cri.sale_order_item_id\njoin  item_type it on it.id = soi.item_type_id\njoin  putaway pu on pu.id = cri.putaway_id\njoin  facility f on f.id = pu.facility_id\njoin  tenant t ON t.id = it.tenant_id\nleft join  invoice_item ii on ii.id = soi.return_invoice_item_id\njoin  invoice i on i.id = ii.invoice_id\njoin  reverse_pickup rp on rp.id = rpi.reverse_pickup_id\njoin  sale_order_item soi on soi.id = rpi.sale_order_item_id\njoin  item_type it on it.id = soi.item_type_id\njoin  putaway pu on pu.id = rpi.putaway_id\njoin  facility f on f.id = pu.facility_id\njoin  tenant t ON t.id = it.tenant_id\njoin  putaway pu on pu.id = pi.putaway_id\njoin  item_type it on it.id = pi.item_type_id\njoin  facility f on f.id = pu.facility_id\njoin  tenant t ON t.id = it.tenant_id\njoin  invoice i on ii.invoice_id = i.id\nleft join shipping_package sp on sp.invoice_id = i.id\nleft join picklist_item pi on pi.shipping_package_code = sp.code\nleft join picklist p on (pi.picklist_id = p.id and p.facility_id = i.facility_id)\njoin  item_type it on it.id = ii.item_type_id\njoin  facility f on f.id = i.facility_id\njoin  tenant t ON t.id = it.tenant_id\njoin  facility f on f.id = ia.facility_id\nleft join  party p ON p.id = ia.facility_id\njoin  tenant t ON t.id = p.tenant_id\nJOIN  item_type it ON it.id = ogpi.item_type_id\nJOIN  outbound_gate_pass ogp ON ogp.id = ogpi.outbound_gate_pass_id\nleft join  putaway_entity_mapping pem on pem.outbound_gate_pass_id = ogp.id\nleft join  putaway pu on pu.id = pem.putaway_id\nleft JOIN  facility in_f ON in_f.id = ogp.to_party_id\nleft JOIN  facility out_f ON out_f.id = ogp.facility_id\nleft join  tenant t ON t.id = it.tenant_id\njoin  shipping_package sp on sp.id = soi.shipping_package_id\nJOIN  item_type it ON it.id = soi.item_type_id\nJOIN  item i ON i.id = soi.item_id\nJOIN  facility f ON f.id = soi.facility_id\njoin  tenant t on sp.tenant_id = t.id\nleft join  putaway p on p.id = pi.putaway_id\nleft join  item_type it on it.id = pi.item_type_id\nleft JOIN  facility f ON f.id = p.facility_id\nleft join  tenant t ON t.id = it.tenant_id\nleft join item_type it on iti.item_type_id = it.id\nleft join facility f on f.id = iti.facility_id\nleft join tenant t on t.id = it.tenant_id\nleft join shelf s on s.id = iti.shelf_id\nleft join picklist pl on pli.picklist_id = pl.id\nleft join item_type it on pli.sku_code = it.sku_Code\nleft join shipping_package sp on sp.code = pli.shipping_package_code\nleft join invoice inv on sp.invoice_id = inv.id\nleft join facility f on f.id = pl.facility_id\nleft join tenant t on t.id = it.tenant_id\nleft join putaway pu on pui.putaway_id = pu.id\njoin  item_type it on it.id = pui.item_type_id\njoin  facility f on f.id = pu.facility_id\njoin  tenant t ON t.id = it.tenant_id",
+    "source": "export",
+    "export_name": "Facility Transaction Ledger",
+    "fields": [
+     {
+      "label": "SKU Code",
+      "expr": "X.sku_code"
+     },
+     {
+      "label": "SKU Name",
+      "expr": "X.sku_name"
+     },
+     {
+      "label": "Entity",
+      "expr": "X.entity"
+     },
+     {
+      "label": "Entity Type",
+      "expr": "X.entity_type"
+     },
+     {
+      "label": "Entity Code",
+      "expr": "X.entity_code"
+     },
+     {
+      "label": "Entity Status",
+      "expr": "X.entity_status"
+     },
+     {
+      "label": "From Facility",
+      "expr": "X.from_facility_name"
+     },
+     {
+      "label": "To Facility",
+      "expr": "X.to_facility_name"
+     },
+     {
+      "label": "Units",
+      "expr": "X.units"
+     },
+     {
+      "label": "Inventory Updated At",
+      "expr": "X.inventory_updated_at"
+     },
+     {
+      "label": "Putaway Codes",
+      "expr": "X.putaway_codes"
+     },
+     {
+      "label": "Transaction Type",
+      "expr": "X.transaction_type"
+     }
+    ],
+    "quick_fields": [
+     "SKU Code",
+     "SKU Name",
+     "Entity Code",
+     "Entity Status",
+     "Inventory Updated At",
+     "Putaway Codes"
+    ],
+    "filters": [
+     {
+      "label": "Added in Date Range",
+      "condition": "(X.inventory_updated_at &gt;= :addedOnStart and X.inventory_updated_at &lt; :addedOnEnd and X.entity = 'GRN') or (X.inventory_updated_at &gt;= :addedOnStart and X.inventory_updated_at &lt; :addedOnEnd and X.entity = 'INBOUND_GATEPASS') or (X.inventory_updated_at &gt;= :addedOnStart and X.inventory_updated_at &lt; :addedOnEnd and X.entity = 'PUTAWAY_RTO') or (X.inventory_updated_at &gt;= :addedOnStart and X.inventory_updated_at &lt; :addedOnEnd and X.entity = 'PUTAWAY_CIR') or (X.inventory_updated_at &gt;= :addedOnStart and X.inventory_updated_at &lt; :addedOnEnd and X.entity = 'PUTAWAY_CANCELLED_ITEM') or (X.inventory_updated_at &gt;= :addedOnStart and X.inventory_updated_at &lt; :addedOnEnd and X.entity = 'INVOICES') or (X.inventory_updated_at &gt;= :addedOnStart and X.inventory_updated_at &lt; :addedOnEnd and X.entity = 'INVENTORY_ADJUSTMENT') or (X.inventory_updated_at &gt;= :addedOnStart and X.inventory_updated_at &lt; :addedOnEnd and X.entity = 'OUTBOUND_GATEPASS') or (X.inventory_updated_at &gt;= :addedOnStart and X.inventory_updated_at &lt; :addedOnEnd and X.entity = 'BARCODED_UNINVOICED_SOI') or (X.inventory_updated_at &gt;= :addedOnStart and X.inventory_updated_at &lt; :addedOnEnd and X.entity = 'PARTIAL_PUTAWAYS') or (X.inventory_updated_at &gt;= :addedOnStart and X.inventory_updated_at &lt; :addedOnEnd and X.entity = 'Not Found') or (X.inventory_updated_at &gt;= :addedOnStart and X.inventory_updated_at &lt; :addedOnEnd and X.entity = 'PICKLIST') or (X.inventory_updated_at &gt;= :addedOnStart and X.inventory_updated_at &lt; :addedOnEnd and X.entity = 'PUTAWAY_PICKLIST_ITEM')",
+      "type": "daterange"
+     }
+    ],
+    "quick_filters": [
+     "Added in Date Range"
+    ]
+   },
    "HSN Summary Report": {
     "label": "HSN Summary Report",
+    "description": "Look up HSN Summary Report records - includes things like HSN CODE, Sum of Qty, Rate of Tax.",
     "anchor_table": "invoice_item",
     "anchor_alias": "invi",
     "from_join_clause": "from invoice_item invi\njoin invoice_item_tax invit on invi.id = invit.invoice_item_id\nleft join invoice inv on inv.id = invi.invoice_id\nleft join shipping_package sp on sp.invoice_id = inv.id\nleft join item_type it on invi.`item_type_id` = it.`id`\nleft join tax_type tt on tt.id = it.gst_tax_type_id",
@@ -6243,7 +6642,8 @@
     ],
     "quick_fields": [
      "HSN CODE",
-     "Sum of Qty"
+     "Sum of Qty",
+     "Rate of Tax"
     ],
     "filters": [
      {
@@ -6258,6 +6658,7 @@
    },
    "Sales Forecast Report": {
     "label": "Sales Forecast Report",
+    "description": "Look up Sales Forecast Report records - includes things like Item Name, Item SkuCode, Item Created.",
     "anchor_table": "sale_order_item",
     "anchor_alias": "soi",
     "from_join_clause": "from sale_order_item soi\njoin item_type it on ( it.tenant_id = :tenantId and soi.item_type_id = it.id\njoin category c on it.category_id = c.id\njoin item_type_inventory_snapshot itis on itis.item_type_id = it.id",
@@ -6308,6 +6709,7 @@
    },
    "Aggregate Sales Report": {
     "label": "Aggregate Sales Report",
+    "description": "Look up Aggregate Sales Report records - includes things like facility Name, Channel Name, Item SKU Code.",
     "anchor_table": "sale_order_item",
     "anchor_alias": "soi",
     "from_join_clause": "FROM sale_order_item soi\njoin sale_order so on soi.sale_order_id = so.id\nleft join address_detail ad2 on so.billing_address_id = ad2.id\nleft join state s1 on s1.iso2_code = ad2.state_code and s1.country_code = ad2.country_code\nleft join item_type it on soi.item_type_id = it.id\nleft join tax_type tt on tt.id = it.gst_tax_type_id\nleft join shipping_package sp on soi.shipping_package_id = sp.id\nleft join invoice inv on inv.id=sp.invoice_id\nleft join invoice_item invt on invt.id = soi.invoice_item_id\nleft join facility f on soi.facility_id = f.id\nleft join party pf on f.id = pf.id\nleft join channel ch on so.channel_id = ch.id",
@@ -6396,11 +6798,907 @@
     "quick_filters": [
      "Invoiced in Date Range"
     ]
+   },
+   "Cycle Count Non-Barcoded Items Report": {
+    "label": "Cycle Count Non-Barcoded Items Report",
+    "description": "Look up Cycle Count Non-Barcoded Items Report records - includes things like Cycle Count code, Shelf Name, Non Barcoded Item Count.",
+    "anchor_table": "cycle_count",
+    "anchor_alias": "cc",
+    "from_join_clause": "from cycle_count cc\njoin sub_cycle_count scc ON scc.cycle_count_id = cc.id\njoin cycle_count_shelf_summary ccss ON ccss.sub_cycle_count_id = scc.id\njoin shelf s ON ccss.shelf_id = s.id",
+    "source": "export",
+    "export_name": "CYCLE_COUNT_NONBARCODED_ITEMS_REPORT",
+    "fields": [
+     {
+      "label": "Cycle Count code",
+      "expr": "cc.code"
+     },
+     {
+      "label": "Shelf Name",
+      "expr": "s.code"
+     },
+     {
+      "label": "Non Barcoded Item Count",
+      "expr": "ccss.non_barcoded_item_count"
+     },
+     {
+      "label": "Cycle Count Created Date",
+      "expr": "cc.created"
+     },
+     {
+      "label": "Cycle Count Updated Date",
+      "expr": "cc.completed"
+     },
+     {
+      "label": "Cycle Count Status",
+      "expr": "cc.status_code"
+     }
+    ],
+    "quick_fields": [
+     "Cycle Count code",
+     "Shelf Name",
+     "Non Barcoded Item Count",
+     "Cycle Count Created Date",
+     "Cycle Count Updated Date",
+     "Cycle Count Status"
+    ],
+    "filters": [
+     {
+      "label": "Cycle Count created Date",
+      "condition": "cc.created &gt; :createdOnStart and cc.created &lt; :createdOnEnd",
+      "type": "daterange"
+     },
+     {
+      "label": "Cycle Count Updated Date",
+      "condition": "cc.completed &gt; :updatedOnStart and cc.completed &lt; :updatedOnEnd",
+      "type": "daterange"
+     }
+    ],
+    "quick_filters": [
+     "Cycle Count created Date"
+    ]
+   },
+   "GST E-Invoice": {
+    "label": "GST Einvoice",
+    "description": "Look up GST Einvoice records - includes things like Facility Code, username, gsp_provider_name.",
+    "anchor_table": "gst_einvoice_seller_credentials",
+    "anchor_alias": "gesc",
+    "from_join_clause": "FROM gst_einvoice_seller_credentials gesc\njoin party p on (p.id = gesc.party_id)",
+    "source": "export",
+    "export_name": "GST Einvoice",
+    "fields": [
+     {
+      "label": "Facility Code",
+      "expr": "p.code"
+     },
+     {
+      "label": "Client ID",
+      "expr": "gesc.client_id"
+     },
+     {
+      "label": "GSTIN",
+      "expr": "gesc.gstin"
+     },
+     {
+      "label": "client secret",
+      "expr": "gesc.client_secret"
+     },
+     {
+      "label": "username",
+      "expr": "gesc.username"
+     },
+     {
+      "label": "password",
+      "expr": "gesc.password"
+     },
+     {
+      "label": "gsp_provider_name",
+      "expr": "gesc.gsp_provider_name"
+     },
+     {
+      "label": "enabled",
+      "expr": "gesc.enabled"
+     }
+    ],
+    "quick_fields": [
+     "Facility Code",
+     "username",
+     "gsp_provider_name"
+    ],
+    "filters": [],
+    "quick_filters": []
+   },
+   "Clear Tax Sale Report": {
+    "label": "Clear Tax Sale Report",
+    "description": "Look up Clear Tax Sale Report records - includes things like Date, Customer Billing Name, HSN or SAC code.",
+    "anchor_table": "sale_order_item",
+    "anchor_alias": "soi",
+    "from_join_clause": "from sale_order_item soi\nleft join sale_order so on (soi.sale_order_id = so.id)\nleft join customer cust on cust.id = so.customer_id\nleft join address_detail ad2 on so.billing_address_id = ad2.id\nleft join address_detail addr on soi.shipping_address_id = addr.id\nleft join item_type it on soi.item_type_id = it.id\nleft join invoice_item invi on invi.id = soi.invoice_item_id\nleft join invoice_item_tax invit on invi.id = invit.invoice_item_id\nleft join invoice inv on inv.id = invi.invoice_id\nleft join facility f on f.id = soi.facility_id\nleft join party p1 on p1.id=f.id\nleft join state s on (s.iso2_code = addr.state_code and s.country_code = addr.country_code)\nleft join state s1 on (s1.iso2_code = ad2.state_code and s1.country_code = ad2.country_code)\nleft join party p on p.id=cust.id\nleft join party_address parAddress on (parAddress.party_id=p.id and parAddress.party_address_type_id = 2)",
+    "source": "export",
+    "export_name": "Clear Tax Sale Report",
+    "fields": [
+     {
+      "label": "Date",
+      "expr": "DATE_FORMAT(inv.created,'%d-%m-%Y')"
+     },
+     {
+      "label": "Invoice number",
+      "expr": "inv.code"
+     },
+     {
+      "label": "Customer Billing Name",
+      "expr": "ad2.name"
+     },
+     {
+      "label": "Customer Billing GSTIN",
+      "expr": "p.gst_number"
+     },
+     {
+      "label": "State Place of Supply",
+      "expr": "s.name"
+     },
+     {
+      "label": "Is the item a GOOD (G) or SERVICE (S)",
+      "expr": "'G'"
+     },
+     {
+      "label": "Item Description",
+      "expr": "it.name"
+     },
+     {
+      "label": "HSN or SAC code",
+      "expr": "it.hsn_code"
+     },
+     {
+      "label": "Item Quantity",
+      "expr": "invi.quantity"
+     },
+     {
+      "label": "Item Unit of Measurement",
+      "expr": "'Unt'"
+     },
+     {
+      "label": "Item Rate",
+      "expr": "invi.subtotal/invi.quantity"
+     },
+     {
+      "label": "Total Item Discount Amount",
+      "expr": "invi.discount"
+     },
+     {
+      "label": "Item Taxable Value",
+      "expr": "invi.subtotal"
+     },
+     {
+      "label": "IGSTA",
+      "expr": "sum(case when (addr.country_code='IN' and invit.cost_head='SELLING_PRICE') then (invit.integrated_gst_percentage/invi.quantity) else '0' end)"
+     },
+     {
+      "label": "CGSTA",
+      "expr": "sum(case when (addr.country_code='IN' and invit.cost_head='SELLING_PRICE') then (invit.central_gst_percentage/invi.quantity) else '0' end)"
+     },
+     {
+      "label": "SGSTA",
+      "expr": "sum(case when (addr.country_code='IN' and invit.cost_head='SELLING_PRICE') then (invit.state_gst_percentage/invi.quantity) else '0' end)"
+     },
+     {
+      "label": "CESSA",
+      "expr": "sum(case when (addr.country_code='IN' and invit.cost_head='SELLING_PRICE') then (invit.compensation_cess_percentage/invi.quantity) else '0' end)"
+     },
+     {
+      "label": "CGST Rate",
+      "expr": "#{#cgstA }"
+     },
+     {
+      "label": "CGST Amount",
+      "expr": "round((invit.central_gst),2)"
+     },
+     {
+      "label": "SGST Rate",
+      "expr": "#{#sgstA}"
+     },
+     {
+      "label": "SGST Amount",
+      "expr": "round((invit.state_gst),2)"
+     },
+     {
+      "label": "IGST Rate",
+      "expr": "#{#igstA}"
+     },
+     {
+      "label": "IGST Amount",
+      "expr": "round((invit.integrated_gst),2)"
+     },
+     {
+      "label": "CESS Rate",
+      "expr": "#{#cessA}"
+     },
+     {
+      "label": "CESS Amount",
+      "expr": "round((invit.compensation_cess),2)"
+     }
+    ],
+    "quick_fields": [
+     "Date",
+     "Customer Billing Name",
+     "HSN or SAC code",
+     "Item Quantity"
+    ],
+    "filters": [
+     {
+      "label": "Invoiced in Date Range",
+      "condition": "inv.created &gt; :invoicedOnStart and inv.created &lt; :invoicedOnEnd",
+      "type": "daterange"
+     }
+    ],
+    "quick_filters": [
+     "Invoiced in Date Range"
+    ]
+   },
+   "Clear Tax Credit Note": {
+    "label": "Clear Tax Credit Note",
+    "description": "Look up Clear Tax Credit Note records - includes things like Credit/Debit Note Date, Invoice Date, Customer Billing Name.",
+    "anchor_table": "sale_order_item",
+    "anchor_alias": "soi",
+    "from_join_clause": "from sale_order_item soi\nleft join sale_order so on (soi.`sale_order_id` = so.`id`)\nleft join customer cust on cust.id = so.customer_id\nleft join address_detail ad2 on so.billing_address_id = ad2.id\nleft join address_detail addr on soi.shipping_address_id = addr.id\nleft join shipping_package sp on soi.`shipping_package_id` = sp.`id`\nleft join item_type it on soi.`item_type_id` = it.`id`\nleft join reverse_pickup rp on soi.reverse_pickup_id = rp.id\nleft join invoice_item rinvi on rinvi.id = soi.return_invoice_item_id\nleft join invoice_item_tax rinvit on rinvi.id = rinvit.invoice_item_id\nleft join invoice rinv on rinv.id = rinvi.invoice_id\nleft join facility f on f.id = soi.facility_id\nleft join state s on (s.iso2_code = addr.state_code and s.country_code = addr.country_code)\nleft join state s1 on (s1.iso2_code = ad2.state_code and s1.country_code = ad2.country_code)\nleft join invoice inv on inv.id = sp.invoice_id\nleft join party p on p.id=cust.id\nleft join party p1 on p1.id=f.id\nleft join party_address parAddress on (parAddress.party_id=p.id and parAddress.party_address_type_id = 2)",
+    "source": "export",
+    "export_name": "Clear Tax Credit Note",
+    "fields": [
+     {
+      "label": "Credit/Debit Note Date",
+      "expr": "DATE_FORMAT(rinv.created,'%d-%m-%Y')"
+     },
+     {
+      "label": "Credit/Debit Note Number",
+      "expr": "rinv.code"
+     },
+     {
+      "label": "Credit(C)/Debit(D) Note Type",
+      "expr": "'C'"
+     },
+     {
+      "label": "Invoice Date",
+      "expr": "DATE_FORMAT(inv.created,'%d-%m-%Y')"
+     },
+     {
+      "label": "Invoice Number",
+      "expr": "inv.display_code"
+     },
+     {
+      "label": "Customer Billing Name",
+      "expr": "ad2.name"
+     },
+     {
+      "label": "Customer Billing GSTIN",
+      "expr": "p.gst_number"
+     },
+     {
+      "label": "State Place of Supply",
+      "expr": "s.name"
+     },
+     {
+      "label": "Is the item a GOOD (G) or SERVICE (S)",
+      "expr": "case when (addr.country_code='IN' and rinvit.cost_head='SELLING_PRICE') then 'G' else 'S' end"
+     },
+     {
+      "label": "Item Description",
+      "expr": "case when (rinvit.cost_head='SHIPPING_CHARGES') then  'Shipping Charge' else case when (rinvit.cost_head='CASH_ON_DELIVERY_CHARGES') then  'COD Charge' else  case when (rinvit.cost_head='SELLING_PRICE') then it.name else '0' end end end"
+     },
+     {
+      "label": "HSN or SAC code",
+      "expr": "it.hsn_code"
+     },
+     {
+      "label": "Item Quantity",
+      "expr": "sum(rinvi.quantity)/(count(rinvit.id)/count(distinct(rinvi.id)))"
+     },
+     {
+      "label": "Item Unit of Measurement",
+      "expr": "'Unt'"
+     },
+     {
+      "label": "Item Rate",
+      "expr": "case when (rinvit.cost_head='SHIPPING_CHARGES') then  (rinvi.shipping_charges/rinvi.quantity) else \n            case when (rinvit.cost_head='CASH_ON_DELIVERY_CHARGES') then  (rinvi.cash_on_delivery_charges/rinvi.quantity) else  case when (rinvit.cost_head='SELLING_PRICE') then (rinvi.subtotal/rinvi.quantity) + (rinvi.discount/rinvi.quantity) else '0' end end end"
+     },
+     {
+      "label": "Total Item Discount Amount",
+      "expr": "case when (rinvit.cost_head='SELLING_PRICE') then rinvi.discount/rinvi.quantity else '0' end"
+     },
+     {
+      "label": "Item Taxable Value",
+      "expr": "case when (rinvit.cost_head='SHIPPING_CHARGES') then  rinvi.shipping_charges else \n            case when (rinvit.cost_head='CASH_ON_DELIVERY_CHARGES') then  rinvi.cash_on_delivery_charges else case when (rinvit.cost_head='SELLING_PRICE') then rinvi.subtotal else '0' end end end"
+     },
+     {
+      "label": "IGSTA",
+      "expr": "sum(case when (addr.country_code='IN' and rinvit.cost_head='SELLING_PRICE') then rinvit.integrated_gst_percentage else '0' end)/(count(distinct(soi.id)))"
+     },
+     {
+      "label": "CGSTA",
+      "expr": "sum(case when (addr.country_code='IN' and rinvit.cost_head='SELLING_PRICE') then rinvit.central_gst_percentage else '0' end)/(count(distinct(soi.id)))"
+     },
+     {
+      "label": "SGSTA",
+      "expr": "sum(case when (addr.country_code='IN' and rinvit.cost_head='SELLING_PRICE') then rinvit.state_gst_percentage else '0' end)/(count(distinct(soi.id)))"
+     },
+     {
+      "label": "CESSA",
+      "expr": "sum(case when (addr.country_code='IN' and rinvit.cost_head='SELLING_PRICE') then rinvit.compensation_cess_percentage else '0' end)/(count(distinct(soi.id)))"
+     },
+     {
+      "label": "CGST Rate",
+      "expr": "rinvit.central_gst_percentage "
+     },
+     {
+      "label": "CGST Amount",
+      "expr": "round((rinvit.central_gst),2)"
+     },
+     {
+      "label": "SGST Rate",
+      "expr": "rinvit.state_gst_percentage "
+     },
+     {
+      "label": "SGST Amount",
+      "expr": "round((rinvit.state_gst),2)"
+     },
+     {
+      "label": "IGST Rate",
+      "expr": "rinvit.integrated_gst_percentage"
+     }
+    ],
+    "quick_fields": [
+     "Credit/Debit Note Date",
+     "Invoice Date",
+     "Customer Billing Name",
+     "HSN or SAC code",
+     "Item Quantity"
+    ],
+    "filters": [
+     {
+      "label": "Returned in Date Range",
+      "condition": "((rp.updated &gt; :dateRangeStart and rp.updated &lt; :dateRangeEnd ) or (sp.updated &gt; :dateRangeStart and sp.updated &lt; :dateRangeEnd and sp.status_code ='RETURNED'))",
+      "type": "daterange"
+     }
+    ],
+    "quick_filters": [
+     "Returned in Date Range"
+    ]
+   },
+   "Tally ERP9": {
+    "label": "Tally ERP9",
+    "description": "Look up Tally ERP9 records - includes things like Date, Invoice Code, Qty.",
+    "anchor_table": "invoice_item",
+    "anchor_alias": "invi",
+    "from_join_clause": "from invoice_item invi\njoin invoice inv on inv.id = invi.invoice_id\njoin shipping_package sp on sp.invoice_id = inv.id\njoin address_detail addr on sp.shipping_address_id = addr.id\njoin sale_order_item soi on soi.shipping_package_id=sp.id\njoin sale_order so on (sp.`sale_order_id` = so.`id`)\njoin channel ch on ch.id=so.channel_id\njoin item_type it on invi.`item_type_id` = it.`id`\njoin party p on p.id=inv.from_party_id\njoin party_address parAddress on parAddress.party_id=p.id",
+    "source": "export",
+    "export_name": "Tally ERP9",
+    "fields": [
+     {
+      "label": "Date",
+      "expr": "DATE_FORMAT(inv.created,'%d-%m-%Y')"
+     },
+     {
+      "label": "Sale Order Number",
+      "expr": "so.display_order_code"
+     },
+     {
+      "label": "Invoice Code",
+      "expr": "inv.code"
+     },
+     {
+      "label": "Channel entry",
+      "expr": "invi.subtotal + invi.vat + invi.cst + invi.additional_tax"
+     },
+     {
+      "label": "Channel Ledger",
+      "expr": "ch.ledger_name"
+     },
+     {
+      "label": "Qty",
+      "expr": "invi.quantity"
+     },
+     {
+      "label": "Product Name",
+      "expr": "it.name"
+     },
+     {
+      "label": "Unit Price",
+      "expr": "invi.unit_price"
+     },
+     {
+      "label": "Total",
+      "expr": "invi.total + invi.shipping_charges"
+     },
+     {
+      "label": "Sales",
+      "expr": "invi.subtotal"
+     },
+     {
+      "label": "Sales Ledger",
+      "expr": "CONCAT(case\n                                                                     when addr.state_code=parAddress.state_code \n                                                                     then 'Local Sales '                                                                     \n                                                                     else 'CST Sales '\n                                                                end ,trim(trailing '.' from TRIM(TRAILING '0' FROM invi.tax_percentage)),'%')"
+     },
+     {
+      "label": "Tax",
+      "expr": "invi.vat + invi.cst"
+     },
+     {
+      "label": "Tax Ledger",
+      "expr": "CONCAT(case\n                                                                     when addr.state_code=parAddress.state_code \n                                                                     then 'Output VAT ' \n                                                                     when so.cform_provided=1\n                                                                     then 'CST  WITH C FORM  '\n                                                                     else 'CST '\n                                                                end ,trim(trailing '.' from TRIM(TRAILING '0' FROM invi.tax_percentage)),'%')"
+     },
+     {
+      "label": "Additional Tax",
+      "expr": "invi.additional_tax"
+     },
+     {
+      "label": "Additional Tax Ledger",
+      "expr": "CONCAT(case\n                                                                     when addr.state_code=parAddress.state_code \n                                                                     then 'Output Surcharge ' \n                                                                     else 'Output Additional Tax on CST '\n                                                                end ,trim(trailing '.' from trim(TRAILING '0' FROM invi.additional_tax_percentage)),'%')"
+     },
+     {
+      "label": "Other charges",
+      "expr": "invi.shipping_charges"
+     },
+     {
+      "label": "Other charges Ledger",
+      "expr": "'Shipping Charges'"
+     }
+    ],
+    "quick_fields": [
+     "Date",
+     "Invoice Code",
+     "Qty",
+     "Product Name"
+    ],
+    "filters": [
+     {
+      "label": "Channels",
+      "condition": "ch.code in (:channelFilter)",
+      "type": "multiselect"
+     },
+     {
+      "label": "Invoiced in Date Range",
+      "condition": "inv.created &gt; :invoicedInRangeStart and inv.created &lt; :invoicedInRangeEnd",
+      "type": "daterange"
+     }
+    ],
+    "quick_filters": [
+     "Invoiced in Date Range"
+    ]
+   },
+   "Tally GST Report": {
+    "label": "Tally GST Report",
+    "description": "Look up Tally GST Report records - includes things like Date, Product Name, Product SKU Code.",
+    "anchor_table": "invoice_item",
+    "anchor_alias": "invi",
+    "from_join_clause": "from invoice_item invi\njoin invoice_item_tax invit on invi.id = invit.invoice_item_id\nleft join invoice inv on inv.id = invi.invoice_id\nleft join shipping_package sp on sp.invoice_id = inv.id\nleft join address_detail addr on sp.shipping_address_id = addr.id\nleft join state s on (s.iso2_code = addr.state_code and s.country_code = addr.country_code)\nleft join sale_order so on (sp.`sale_order_id` = so.`id`)\nleft join channel ch on ch.id=so.channel_id\nleft join customer cust on cust.id = so.customer_id\nleft join party p1 on p1.id=cust.id\nleft join item_type it on invi.`item_type_id` = it.`id`\nleft join party p on p.id=inv.from_party_id\nleft join tax_type tt on tt.id = it.gst_tax_type_id\nleft join tax_type_configuration ttc on tt.id = ttc.tax_type_id\nleft join tax_type_configuration_range ttcr on (ttc.id = ttcr.tax_type_configuration_id and invi.unit_price < ttcr.end_price and invi.unit_price > ttcr.start_price)\nleft join party_address parAddress on (parAddress.party_id=p.id and parAddress.party_address_type_id = 2)",
+    "source": "export",
+    "export_name": "Tally GST Report",
+    "fields": [
+     {
+      "label": "Date",
+      "expr": "DATE_FORMAT(inv.created,'%d-%m-%Y')"
+     },
+     {
+      "label": "Sale Order Number",
+      "expr": "case when ch.source_code='AMAZON_IN' then so.code else so.display_order_code end"
+     },
+     {
+      "label": "Invoice number",
+      "expr": "case when inv.display_code IS NULL  then inv.code else case when ch.source_code='LIMEROAD' then concat('`',inv.display_code) else inv.display_code end end"
+     },
+     {
+      "label": "Channel entry",
+      "expr": "invi.subtotal + sum(invit.integrated_gst) + sum(invit.central_gst) + sum(invit.state_gst) + sum(invit.compensation_cess) + sum(invit.union_territory_gst)"
+     },
+     {
+      "label": "Channel Ledger",
+      "expr": "ch.ledger_name"
+     },
+     {
+      "label": "Product Name",
+      "expr": "it.name"
+     },
+     {
+      "label": "Product SKU Code",
+      "expr": "it.sku_code"
+     },
+     {
+      "label": "Qty",
+      "expr": "invi.quantity"
+     },
+     {
+      "label": "Unit Price",
+      "expr": "invi.subtotal/invi.quantity"
+     },
+     {
+      "label": "Currency",
+      "expr": "so.currency_code"
+     },
+     {
+      "label": "conversion rate",
+      "expr": "so.currency_conversion_rate"
+     },
+     {
+      "label": "Total",
+      "expr": "(invi.subtotal + sum(invit.integrated_gst) + sum(invit.central_gst) + sum(invit.state_gst) + sum(invit.compensation_cess) + sum(invit.union_territory_gst) + invi.shipping_charges + invi.cash_on_delivery_charges) * so.currency_conversion_rate"
+     },
+     {
+      "label": "Customer Name",
+      "expr": "addr.name"
+     },
+     {
+      "label": "Shipping Address Name",
+      "expr": "addr.name"
+     },
+     {
+      "label": "Shipping Address Line 1",
+      "expr": "addr.address_line1"
+     },
+     {
+      "label": "Shipping Address Line 2",
+      "expr": "addr.address_line2"
+     },
+     {
+      "label": "Shipping Address City",
+      "expr": "addr.city"
+     },
+     {
+      "label": "Shipping Address State",
+      "expr": "case when s.name='Andhra Pradesh (Old)' then 'Andhra Pradesh' else s.name end"
+     },
+     {
+      "label": "Shipping Address Country",
+      "expr": "addr.country_code"
+     },
+     {
+      "label": "Shipping Address Pincode",
+      "expr": "addr.pincode"
+     },
+     {
+      "label": "Shipping Address Phone",
+      "expr": "addr.phone"
+     },
+     {
+      "label": "Shipping Provider",
+      "expr": "sp.shipping_provider_name"
+     },
+     {
+      "label": "AWB num",
+      "expr": "sp.tracking_number"
+     },
+     {
+      "label": "Sales",
+      "expr": "invi.subtotal"
+     },
+     {
+      "label": "IGSTA",
+      "expr": "sum(case when (addr.country_code='IN' and invit.cost_head='SELLING_PRICE') then invit.integrated_gst_percentage else '0' end)"
+     }
+    ],
+    "quick_fields": [
+     "Date",
+     "Product Name",
+     "Product SKU Code",
+     "Qty",
+     "Customer Name",
+     "Shipping Address Name",
+     "Shipping Address Pincode"
+    ],
+    "filters": [
+     {
+      "label": "Created in Date Range",
+      "condition": "inv.created &gt; :addedOnStart and inv.created &lt; :addedOnEnd",
+      "type": "daterange"
+     },
+     {
+      "label": "Channels",
+      "condition": "ch.code in (:channelFilter)",
+      "type": "multiselect"
+     },
+     {
+      "label": "Date Range",
+      "condition": "((sp.dispatch_time &gt; :dateRangeStart and sp.dispatch_time &lt; :dateRangeEnd) or (sp.updated &gt; :dateRangeStart and sp.updated &lt; :dateRangeEnd and sp.status_code ='CANCELLED'))",
+      "type": "daterange"
+     }
+    ],
+    "quick_filters": [
+     "Created in Date Range",
+     "Date Range"
+    ]
+   },
+   "Tally Return GST Report": {
+    "label": "Tally Return GST Report",
+    "description": "Look up Tally Return GST Report records - includes things like Date, Product Name, Product SKU Code.",
+    "anchor_table": "sale_order_item",
+    "anchor_alias": "soi",
+    "from_join_clause": "from sale_order_item soi\nleft join sale_order so on (soi.`sale_order_id` = so.`id`)\nleft join customer cust on cust.id = so.customer_id\nleft join party p1 on p1.id=cust.id\nleft join address_detail addr on soi.shipping_address_id = addr.id\nleft join shipping_package sp on soi.`shipping_package_id` = sp.`id`\nleft join item_type it on soi.`item_type_id` = it.`id`\nleft join reverse_pickup rp on soi.reverse_pickup_id = rp.id\nleft join invoice_item rinvi on rinvi.id = soi.return_invoice_item_id\nleft join invoice_item_tax rinvit on rinvi.id = rinvit.invoice_item_id\nleft join invoice rinv on rinv.id = rinvi.invoice_id\nleft join state s on (s.iso2_code = addr.state_code and s.country_code = addr.country_code)\nleft join channel ch on ch.id=so.channel_id\nleft join invoice inv on inv.id = sp.invoice_id\nleft join party p on p.id=inv.from_party_id\nleft join party_address parAddress on (parAddress.party_id=p.id and parAddress.party_address_type_id = 2)\nleft join tax_type tt on tt.id = it.gst_tax_type_id\nleft join tax_type_configuration ttc on tt.id = ttc.tax_type_id\nleft join tax_type_configuration_range ttcr on (ttc.id = ttcr.tax_type_configuration_id and rinvi.unit_price < ttcr.end_price and rinvi.unit_price > ttcr.start_price)",
+    "source": "export",
+    "export_name": "Tally Return GST Report",
+    "fields": [
+     {
+      "label": "Date",
+      "expr": "case when sp.status_code = 'RETURNED' then DATE_FORMAT(sp.updated,'%d-%m-%Y') else DATE_FORMAT(rp.updated,'%d-%m-%Y') end"
+     },
+     {
+      "label": "Sale Order Number",
+      "expr": "case when ch.source_code='AMAZON_IN' then so.code else so.display_order_code end"
+     },
+     {
+      "label": "Invoice number",
+      "expr": "rinv.code"
+     },
+     {
+      "label": "Channel entry",
+      "expr": "ch.name"
+     },
+     {
+      "label": "Channel Ledger",
+      "expr": "ch.ledger_name"
+     },
+     {
+      "label": "Product Name",
+      "expr": "it.name"
+     },
+     {
+      "label": "Product SKU Code",
+      "expr": "it.sku_code"
+     },
+     {
+      "label": "Qty",
+      "expr": "sum(rinvi.quantity)/(count(rinvit.id)/count(distinct(rinvi.id)))"
+     },
+     {
+      "label": "Unit Price",
+      "expr": "rinvi.subtotal/rinvi.quantity"
+     },
+     {
+      "label": "Currency",
+      "expr": "so.currency_code"
+     },
+     {
+      "label": "conversion rate",
+      "expr": "so.currency_conversion_rate"
+     },
+     {
+      "label": "Total",
+      "expr": "rinvi.subtotal + round(sum(rinvit.central_gst/rinvi.quantity),2) + round(sum(rinvit.state_gst/rinvi.quantity),2) + round(sum(rinvit.integrated_gst/rinvi.quantity),2) + round(sum(rinvit.union_territory_gst/rinvi.quantity),2) + round(sum(rinvit.compensation_cess/rinvi.quantity),2) + + rinvi.shipping_charges +  rinvi.cash_on_delivery_charges"
+     },
+     {
+      "label": "Customer Name",
+      "expr": "addr.name"
+     },
+     {
+      "label": "Shipping Address Name",
+      "expr": "addr.name"
+     },
+     {
+      "label": "Shipping Address Line 1",
+      "expr": "addr.address_line1"
+     },
+     {
+      "label": "Shipping Address Line 2",
+      "expr": "addr.address_line2"
+     },
+     {
+      "label": "Shipping Address City",
+      "expr": "addr.city"
+     },
+     {
+      "label": "Shipping Address State",
+      "expr": "case when s.name='Andhra Pradesh (Old)' then 'Andhra Pradesh' else s.name end"
+     },
+     {
+      "label": "Shipping Address Country",
+      "expr": "addr.country_code"
+     },
+     {
+      "label": "Shipping Address Pincode",
+      "expr": "addr.pincode"
+     },
+     {
+      "label": "Shipping Address Phone",
+      "expr": "addr.phone"
+     },
+     {
+      "label": "Shipping Provider",
+      "expr": "sp.shipping_provider_name"
+     },
+     {
+      "label": "AWB num",
+      "expr": "sp.tracking_number"
+     },
+     {
+      "label": "Sales",
+      "expr": "rinvi.subtotal"
+     },
+     {
+      "label": "IGSTA",
+      "expr": "sum(case when (addr.country_code='IN' and rinvit.cost_head='SELLING_PRICE') then (rinvit.integrated_gst_percentage) else '0' end)/(count(distinct(soi.id)))"
+     }
+    ],
+    "quick_fields": [
+     "Date",
+     "Product Name",
+     "Product SKU Code",
+     "Qty",
+     "Customer Name",
+     "Shipping Address Name",
+     "Shipping Address Pincode"
+    ],
+    "filters": [
+     {
+      "label": "Channels",
+      "condition": "ch.code in (:channelFilter)",
+      "type": "multiselect"
+     },
+     {
+      "label": "Returned in Date Range",
+      "condition": "((rp.updated &gt; :dateRangeStart and rp.updated &lt; :dateRangeEnd ) or (sp.updated &gt; :dateRangeStart and sp.updated &lt; :dateRangeEnd and sp.status_code ='RETURNED'))",
+      "type": "daterange"
+     }
+    ],
+    "quick_filters": [
+     "Returned in Date Range"
+    ]
+   },
+   "Warehouse Productivity Tracker": {
+    "label": "Warehouse Productivity Tracker",
+    "description": "Look up Warehouse Productivity Tracker records - includes things like No. of picklists generated, No. of picklist to-be processed, No. of picklists processed.",
+    "anchor_table": "picklist",
+    "anchor_alias": "p",
+    "from_join_clause": "from picklist p",
+    "source": "export",
+    "export_name": "PRODUCTIVITY TRACKER",
+    "fields": [
+     {
+      "label": "No. of picklists generated",
+      "expr": "count(*)"
+     },
+     {
+      "label": "No. of picklist to-be processed",
+      "expr": "query:SELECT(select count(*) from picklist where created &gt; :dateRangeStart and created &lt; :dateRangeEnd and facility_id = :facilityId) -(select count(*) from picklist where status_code='RECEIVING' and created &gt; :dateRangeStart and created &lt; :dateRangeEnd and facility_id = :facilityId)"
+     },
+     {
+      "label": "No. of picklists processed",
+      "expr": "query:select count(*) from picklist pl  where pl.status_code = 'CLOSED' and pl.created &gt; :dateRangeStart and pl.created &lt; :dateRangeEnd and pl.facility_id = :facilityId"
+     },
+     {
+      "label": "No. of packings performed",
+      "expr": "query:select count(*) from picklist p join picklist_item pi on p.id =pi.picklist_id  join shipping_package sp on pi.shipping_package_code= sp.code and sp.status_code ='PACKED' and p.created &gt; :dateRangeStart and p.created &lt; :dateRangeEnd and p.facility_id = :facilityId"
+     },
+     {
+      "label": "Total Item Picked",
+      "expr": "query:select count(*) from picklist p join  picklist_item pi on p.id =pi.picklist_id and pi.status_code ='COMPLETE' and p.created &gt; :dateRangeStart and p.created &lt; :dateRangeEnd and p.facility_id = :facilityId"
+     },
+     {
+      "label": "Total picking time (in hrs)",
+      "expr": "sum(ROUND(TIME_TO_SEC(TIMEDIFF(p.complete_picking, p.start_picking))/3600,0))"
+     },
+     {
+      "label": "Average Picking Time (in hrs)",
+      "expr": "query:select Round((select sum(ROUND(TIME_TO_SEC(TIMEDIFF(complete_picking, start_picking))/3600,0)) from picklist where created &gt; :dateRangeStart and created &lt; :dateRangeEnd and facility_id = :facilityId)/(select count(*) from picklist where status_code = 'CLOSED' and created &gt; :dateRangeStart and created &lt; :dateRangeEnd and facility_id = :facilityId))"
+     }
+    ],
+    "quick_fields": [
+     "No. of picklists generated",
+     "No. of picklist to-be processed",
+     "No. of picklists processed"
+    ],
+    "filters": [
+     {
+      "label": "Added in Date Range",
+      "condition": "p.created &gt; :dateRangeStart and p.created &lt; :dateRangeEnd",
+      "type": "daterange"
+     }
+    ],
+    "quick_filters": [
+     "Added in Date Range"
+    ]
+   },
+   "Channel Prices Report": {
+    "label": "Channel Prices Report",
+    "description": "Look up Channel Prices Report records - includes things like channelName, SKU Code, Created.",
+    "anchor_table": "channel_item_type_price",
+    "anchor_alias": "citp",
+    "from_join_clause": "from channel_item_type_price citp\nleft join channel_item_type cit on citp.channel_item_type_id = cit.id\nleft join channel ch on cit.channel_id = ch.id\nleft join item_type it on cit.item_type_id = it.id",
+    "source": "export",
+    "export_name": "Prices Report",
+    "fields": [
+     {
+      "label": "channelName",
+      "expr": "ch.name"
+     },
+     {
+      "label": "SKU Code",
+      "expr": "it.sku_code"
+     },
+     {
+      "label": "Seller SKU on Channel",
+      "expr": "cit.seller_sku_code"
+     },
+     {
+      "label": "Channel Product Id",
+      "expr": "cit.channel_product_id"
+     },
+     {
+      "label": "Selling Price",
+      "expr": "citp.selling_price"
+     },
+     {
+      "label": "Transfer Price",
+      "expr": "citp.transfer_price"
+     },
+     {
+      "label": "Prices",
+      "expr": "citp.competitive_price"
+     },
+     {
+      "label": "MRP",
+      "expr": "citp.mrp"
+     },
+     {
+      "label": "MSP",
+      "expr": "citp.msp"
+     },
+     {
+      "label": "Currency",
+      "expr": "citp.currency_code"
+     },
+     {
+      "label": "Created",
+      "expr": "citp.created"
+     },
+     {
+      "label": "Updated",
+      "expr": "citp.updated"
+     }
+    ],
+    "quick_fields": [
+     "channelName",
+     "SKU Code",
+     "Created",
+     "Updated"
+    ],
+    "filters": [
+     {
+      "label": "Channels",
+      "condition": "ch.code in (:channelFilter)",
+      "type": "multiselect"
+     },
+     {
+      "label": "Sku Code Contains",
+      "condition": "it.sku_code= :mySkuFilter",
+      "type": "text"
+     },
+     {
+      "label": "Seller Sku Contains",
+      "condition": "cit.seller_sku_code= :sellerSkuFilter",
+      "type": "text"
+     },
+     {
+      "label": "Channel Product Id Contains",
+      "condition": "cit.channel_product_id= :channelProductIdFilter",
+      "type": "text"
+     },
+     {
+      "label": "Created in Date Range",
+      "condition": "citp.created &gt; :createdOnStart and citp.created &lt; :createdOnEnd",
+      "type": "daterange"
+     },
+     {
+      "label": "Updated in Date Range",
+      "condition": "citp.updated &gt; :updatedOnStart and citp.updated &lt; :updatedOnEnd",
+      "type": "daterange"
+     }
+    ],
+    "quick_filters": [
+     "Sku Code Contains",
+     "Channel Product Id Contains",
+     "Created in Date Range"
+    ]
    }
   },
   "Cycle Count": {
    "Cycle Count Overall Data": {
     "label": "Cycle Count Overall Data",
+    "description": "Look up Cycle Count Overall Data records - includes things like Shelf Code, Product Name, Sku Code.",
     "anchor_table": "cycle_count_item",
     "anchor_alias": "cci",
     "from_join_clause": "from cycle_count_item cci\njoin cycle_count_shelf_summary ccss on cci.cycle_count_shelf_summary_id=ccss.id\njoin user u on ccss.user_id=u.id\njoin sub_cycle_count scc on ccss.sub_cycle_count_id=scc.id\njoin cycle_count cc on scc.cycle_count_id=cc.id\njoin shelf s on ccss.shelf_id=s.id\njoin item_type it on it.sku_code=cci.sku_code\njoin vendor_item_type vit on it.id=vit.item_type_id\njoin party p on vit.vendor_id=p.id\njoin vendor v on p.id=v.id",
@@ -6514,6 +7812,7 @@
    },
    "Cycle Count Report": {
     "label": "CYCLE_COUNT_REPORT",
+    "description": "Look up CYCLE_COUNT_REPORT records - includes things like Cycle Count Code, Sub Cycle Count Code, Shelf Code.",
     "anchor_table": "cycle_count",
     "anchor_alias": "c",
     "from_join_clause": "from cycle_count c\nleft join sub_cycle_count scc on scc.cycle_count_id = c.id\nleft join cycle_count_shelf_summary ccss on ccss.sub_cycle_count_id = scc.id\nleft join shelf s on s.id = ccss.shelf_id\nleft join user u on ccss.user_id = u.id",
@@ -6559,7 +7858,8 @@
      "Shelf Code",
      "Shelf Code Status",
      "Item Codes",
-     "Updated"
+     "Updated",
+     "Shelf updated"
     ],
     "filters": [
      {
@@ -6580,6 +7880,7 @@
    },
    "Shelf Report": {
     "label": "Shelf Report",
+    "description": "Look up Shelf Report records - includes things like Shelf Code, Shelf Type Code, Section Code.",
     "anchor_table": "shelf",
     "anchor_alias": "sh",
     "from_join_clause": "from shelf sh\nleft join shelf_type sht on sh.shelf_type_id = sht.id\nleft join section sec on sh.section_id = sec.id\nleft join pick_set ps on ps.id = sec.pick_set_id",
