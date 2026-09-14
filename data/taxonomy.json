@@ -1,6 +1,6 @@
 {
  "categories": {
-  "Sale Order": {
+  "Orders": {
    "Sale Orders": {
     "label": "Sale Orders",
     "description": "Look up Sale Orders records - includes things like Sale Order Item Code, Display Order Code, Reverse Pickup Code.",
@@ -212,7 +212,8 @@
      "Item SkuCode",
      "Facility Code Filter",
      "Added in Date Range"
-    ]
+    ],
+    "requires_scope": false
    },
    "Sale Order Margins": {
     "label": "Sale Order Margins",
@@ -384,7 +385,8 @@
     "quick_filters": [
      "Added in Date Range",
      "Dispatched in Date Range"
-    ]
+    ],
+    "requires_scope": false
    },
    "Back Orders": {
     "label": "Back Orders",
@@ -455,7 +457,8 @@
     ],
     "quick_filters": [
      "In Category"
-    ]
+    ],
+    "requires_scope": false
    },
    "Hopped Orders": {
     "label": "Hopped orders",
@@ -589,7 +592,8 @@
     "quick_filters": [
      "Order # Contains",
      "Updated in Date Range"
-    ]
+    ],
+    "requires_scope": false
    },
    "Customer Details": {
     "label": "Customer Details",
@@ -737,7 +741,163 @@
     "quick_filters": [
      "Customer Code Contains",
      "Contact Number Contains"
+    ],
+    "requires_scope": false
+   },
+   "Sales Forecast Report": {
+    "label": "Sales Forecast Report",
+    "description": "Look up Sales Forecast Report records - includes things like Item Name, Item SkuCode, Item Created.",
+    "anchor_table": "sale_order_item",
+    "anchor_alias": "soi",
+    "from_join_clause": "from sale_order_item soi\njoin item_type it on ( it.tenant_id = :tenantId and soi.item_type_id = it.id\njoin category c on it.category_id = c.id\njoin item_type_inventory_snapshot itis on itis.item_type_id = it.id",
+    "source": "export",
+    "export_name": "Sales Forecast Report",
+    "fields": [
+     {
+      "label": "Item Name",
+      "expr": "it.name"
+     },
+     {
+      "label": "Item SkuCode",
+      "expr": "it.sku_code"
+     },
+     {
+      "label": "Item Category",
+      "expr": "c.name"
+     },
+     {
+      "label": "Item Created",
+      "expr": "DATEDIFF(now(),it.created)"
+     },
+     {
+      "label": "Item Created",
+      "expr": "COUNT(soi.id)"
+     },
+     {
+      "label": "Stock in Hand",
+      "expr": "itis.inventory"
+     }
+    ],
+    "quick_fields": [
+     "Item Name",
+     "Item SkuCode",
+     "Item Created",
+     "Item Created"
+    ],
+    "filters": [
+     {
+      "label": "Tenant Code (required)",
+      "condition": null,
+      "type": "text",
+      "resolves_join_token": "tenantId"
+     },
+     {
+      "label": "Last X Days (default 21 days)",
+      "condition": "1=1",
+      "type": "text"
+     }
+    ],
+    "quick_filters": [
+     "Tenant Code (required)",
+     "Last X Days (default 21 days)"
+    ],
+    "requires_scope": true,
+    "required_filter_labels": [
+     "Tenant Code (required)"
     ]
+   },
+   "Aggregate Sales Report": {
+    "label": "Aggregate Sales Report",
+    "description": "Look up Aggregate Sales Report records - includes things like facility Name, Channel Name, Item SKU Code.",
+    "anchor_table": "sale_order_item",
+    "anchor_alias": "soi",
+    "from_join_clause": "FROM sale_order_item soi\njoin sale_order so on soi.sale_order_id = so.id\nleft join address_detail ad2 on so.billing_address_id = ad2.id\nleft join state s1 on s1.iso2_code = ad2.state_code and s1.country_code = ad2.country_code\nleft join item_type it on soi.item_type_id = it.id\nleft join tax_type tt on tt.id = it.gst_tax_type_id\nleft join shipping_package sp on soi.shipping_package_id = sp.id\nleft join invoice inv on inv.id=sp.invoice_id\nleft join invoice_item invt on invt.id = soi.invoice_item_id\nleft join facility f on soi.facility_id = f.id\nleft join party pf on f.id = pf.id\nleft join channel ch on so.channel_id = ch.id",
+    "source": "export",
+    "export_name": "Aggregate Sales Report",
+    "fields": [
+     {
+      "label": "facility Name",
+      "expr": "pf.code"
+     },
+     {
+      "label": "Channel Name",
+      "expr": "ch.name"
+     },
+     {
+      "label": "Billing Address State",
+      "expr": "s1.name"
+     },
+     {
+      "label": "Item SKU Code",
+      "expr": "it.sku_code"
+     },
+     {
+      "label": "MRP",
+      "expr": "it.max_retail_price"
+     },
+     {
+      "label": "GST Tax Type Code",
+      "expr": "tt.code"
+     },
+     {
+      "label": "Sale Order Item Code",
+      "expr": "count(distinct soi.code)"
+     },
+     {
+      "label": "Total Price",
+      "expr": "sum(soi.selling_price + soi.shipping_charges + soi.cash_on_delivery_charges)"
+     },
+     {
+      "label": "SGST",
+      "expr": "(select sum(state_gst/invt.quantity) from invoice_item_tax  where invt.id = invoice_item_id)"
+     },
+     {
+      "label": "Selling Price",
+      "expr": "sum(soi.selling_price)"
+     },
+     {
+      "label": "Cost Price",
+      "expr": "sum(soi.cost_price)"
+     },
+     {
+      "label": "Subtotal",
+      "expr": "sum((invt.subtotal + invt.discount)/invt.quantity)"
+     },
+     {
+      "label": "Discount",
+      "expr": "sum(soi.discount)"
+     },
+     {
+      "label": "CGST",
+      "expr": "(select sum(central_gst/invt.quantity) from invoice_item_tax where  invt.id = invoice_item_id)"
+     },
+     {
+      "label": "IGST",
+      "expr": "(select sum(integrated_gst/invt.quantity) from invoice_item_tax  where invt.id = invoice_item_id)"
+     },
+     {
+      "label": "Shipping Charges",
+      "expr": "sum(soi.shipping_charges)"
+     }
+    ],
+    "quick_fields": [
+     "facility Name",
+     "Channel Name",
+     "Item SKU Code",
+     "GST Tax Type Code",
+     "Sale Order Item Code"
+    ],
+    "filters": [
+     {
+      "label": "Invoiced in Date Range",
+      "condition": "inv.created &gt; :invoicedOnStart and inv.created &lt; :invoicedOnEnd",
+      "type": "daterange"
+     }
+    ],
+    "quick_filters": [
+     "Invoiced in Date Range"
+    ],
+    "requires_scope": false
    }
   },
   "Inventory": {
@@ -814,6 +974,11 @@
     ],
     "filters": [
      {
+      "label": "Facility Name contains",
+      "condition": "f.display_name LIKE CONCAT('%', :facilityContains, '%')",
+      "type": "text"
+     },
+     {
       "label": "Batch Code Contains",
       "condition": "b.code= :batchCode",
       "type": "text"
@@ -835,8 +1000,119 @@
      }
     ],
     "quick_filters": [
+     "Facility Name contains",
      "Batch Code Contains"
-    ]
+    ],
+    "requires_scope": true,
+    "required_filter_label": "Facility Name contains"
+   },
+   "Inventory Blocked Against Orders": {
+    "label": "Inventory Blocked Against Orders",
+    "description": "Find inventory reserved/blocked for specific sale orders - search by SKU or facility to see how much is allocated, and to which order, broken down by allocation status (ALLOCATED, ADDED_IN_PICKLIST, PICKLIST_SCAN_COMPLETE).",
+    "anchor_table": "item_type_inventory_allocation",
+    "anchor_alias": "item_type_inventory_allocation",
+    "from_join_clause": "FROM item_type_inventory_allocation item_type_inventory_allocation",
+    "source": "raw",
+    "export_name": null,
+    "fields": [
+     {
+      "label": "Id",
+      "expr": "item_type_inventory_allocation.id"
+     },
+     {
+      "label": "Tenant Id",
+      "expr": "item_type_inventory_allocation.tenant_id"
+     },
+     {
+      "label": "Sale Order Item Id",
+      "expr": "item_type_inventory_allocation.sale_order_item_id"
+     },
+     {
+      "label": "Item Type Inventory Id",
+      "expr": "item_type_inventory_allocation.item_type_inventory_id"
+     },
+     {
+      "label": "Sku Code",
+      "expr": "item_type_inventory_allocation.sku_code"
+     },
+     {
+      "label": "Shelf Code",
+      "expr": "item_type_inventory_allocation.shelf_code"
+     },
+     {
+      "label": "Batch Code",
+      "expr": "item_type_inventory_allocation.batch_code"
+     },
+     {
+      "label": "Facility Code",
+      "expr": "item_type_inventory_allocation.facility_code"
+     },
+     {
+      "label": "Quantity",
+      "expr": "item_type_inventory_allocation.quantity"
+     },
+     {
+      "label": "Status Code",
+      "expr": "item_type_inventory_allocation.status_code"
+     },
+     {
+      "label": "Created",
+      "expr": "item_type_inventory_allocation.created"
+     },
+     {
+      "label": "Updated",
+      "expr": "item_type_inventory_allocation.updated"
+     },
+     {
+      "label": "Picklist Item Metadata Id",
+      "expr": "item_type_inventory_allocation.picklist_item_metadata_id"
+     }
+    ],
+    "quick_fields": [
+     "Sku Code",
+     "Shelf Code",
+     "Batch Code",
+     "Facility Code",
+     "Quantity",
+     "Status Code",
+     "Created",
+     "Updated"
+    ],
+    "filters": [
+     {
+      "label": "Sku Code contains",
+      "condition": "item_type_inventory_allocation.sku_code LIKE CONCAT('%', :sku_codeContains, '%')",
+      "type": "text"
+     },
+     {
+      "label": "Facility Code contains",
+      "condition": "item_type_inventory_allocation.facility_code LIKE CONCAT('%', :facility_codeContains, '%')",
+      "type": "text"
+     },
+     {
+      "label": "Shelf Code contains",
+      "condition": "item_type_inventory_allocation.shelf_code LIKE CONCAT('%', :shelf_codeContains, '%')",
+      "type": "text"
+     },
+     {
+      "label": "Batch Code contains",
+      "condition": "item_type_inventory_allocation.batch_code LIKE CONCAT('%', :batch_codeContains, '%')",
+      "type": "text"
+     },
+     {
+      "label": "Status Code contains",
+      "condition": "item_type_inventory_allocation.status_code LIKE CONCAT('%', :status_codeContains, '%')",
+      "type": "text"
+     }
+    ],
+    "quick_filters": [
+     "Sku Code contains",
+     "Facility Code contains",
+     "Shelf Code contains",
+     "Batch Code contains",
+     "Status Code contains"
+    ],
+    "requires_scope": true
    },
    "Inventory Worth": {
     "label": "Inventory Worth",
@@ -895,7 +1171,8 @@
     ],
     "quick_filters": [
      "In Category"
-    ]
+    ],
+    "requires_scope": false
    },
    "Inventory Worth By Category": {
     "label": "Inventory Worth By Category",
@@ -946,7 +1223,8 @@
     ],
     "quick_filters": [
      "In Category"
-    ]
+    ],
+    "requires_scope": false
    },
    "Inventory Aging": {
     "label": "Inventory Aging",
@@ -1081,7 +1359,8 @@
     "quick_filters": [
      "Item SkuCode",
      "Created Date Range"
-    ]
+    ],
+    "requires_scope": false
    },
    "Inventory Ledger": {
     "label": "Inventory Ledger",
@@ -1148,6 +1427,11 @@
     ],
     "filters": [
      {
+      "label": "Facility Id equals",
+      "condition": "il.facility_id = :facilityId",
+      "type": "number"
+     },
+     {
       "label": "SKU Code",
       "condition": "il.sku_code= :skuCode",
       "type": "text"
@@ -1159,9 +1443,12 @@
      }
     ],
     "quick_filters": [
+     "Facility Id equals",
      "SKU Code",
      "Created Date Range"
-    ]
+    ],
+    "requires_scope": true,
+    "required_filter_label": "Facility Id equals"
    },
    "Inventory Adjustment": {
     "label": "Inventory Adjustment",
@@ -1237,14 +1524,22 @@
     ],
     "filters": [
      {
+      "label": "Facility Name contains",
+      "condition": "f.display_name LIKE CONCAT('%', :facilityContains, '%')",
+      "type": "text"
+     },
+     {
       "label": "Added in Date Range",
       "condition": "ia.created &gt; :addedOnStart and ia.created &lt; :addedOnEnd",
       "type": "daterange"
      }
     ],
     "quick_filters": [
+     "Facility Name contains",
      "Added in Date Range"
-    ]
+    ],
+    "requires_scope": true,
+    "required_filter_label": "Facility Name contains"
    },
    "Reorder Report": {
     "label": "Reorder Report",
@@ -1302,7 +1597,8 @@
      "SKU"
     ],
     "filters": [],
-    "quick_filters": []
+    "quick_filters": [],
+    "requires_scope": false
    },
    "Fast Moving SKU": {
     "label": "Fast Moving SKU",
@@ -1340,7 +1636,8 @@
      "Inventory"
     ],
     "filters": [],
-    "quick_filters": []
+    "quick_filters": [],
+    "requires_scope": false
    },
    "Expiring/Expired Inventory": {
     "label": "Batching Expired Inventory",
@@ -1401,10 +1698,11 @@
     ],
     "quick_filters": [
      "Expired or About to Expire"
-    ]
+    ],
+    "requires_scope": false
    }
   },
-  "PO": {
+  "Purchasing": {
    "Purchase Orders": {
     "label": "Purchase Orders",
     "description": "Look up Purchase Orders records - includes things like PO Code, Created, PO Created By.",
@@ -1581,7 +1879,8 @@
      "Item Type SkuCode",
      "Vendor SkuCode",
      "Purchase Order No."
-    ]
+    ],
+    "requires_scope": false
    },
    "GRN": {
     "label": "GRN",
@@ -1754,7 +2053,8 @@
      "GRN Code",
      "Item SkuCode",
      "Received Date Range"
-    ]
+    ],
+    "requires_scope": false
    },
    "GRN-PO Mapping": {
     "label": "GRN-PO Mapping",
@@ -1922,7 +2222,8 @@
      "GRN Code",
      "Item SkuCode",
      "Received Date Range"
-    ]
+    ],
+    "requires_scope": false
    },
    "Vendors": {
     "label": "Vendors",
@@ -2062,7 +2363,8 @@
     ],
     "quick_filters": [
      "Created in Date Range"
-    ]
+    ],
+    "requires_scope": false
    },
    "Vendor Item Master": {
     "label": "Vendor Item Master",
@@ -2156,7 +2458,8 @@
      "Vendor Code",
      "Vendor SkuCode",
      "ItemType Skucode"
-    ]
+    ],
+    "requires_scope": false
    },
    "Vendor Catalog": {
     "label": "Vendor Catalog",
@@ -2257,7 +2560,8 @@
      "Vendor SkuCode",
      "ItemType Skucode",
      "Added in Date Range"
-    ]
+    ],
+    "requires_scope": false
    },
    "Unwanted Purchase Orders": {
     "label": "Unwanted Purchase Orders",
@@ -2371,7 +2675,8 @@
     "quick_filters": [
      "Purchase Order No.",
      "In Date Range"
-    ]
+    ],
+    "requires_scope": false
    },
    "ASN": {
     "label": "ASN report",
@@ -2464,10 +2769,11 @@
      "Purchase Order code",
      "ASN code",
      " SKU_Code"
-    ]
+    ],
+    "requires_scope": false
    }
   },
-  "Inventory Syncing": {
+  "Channels": {
    "Channel Item Type Sync": {
     "label": "Channel Item Type Report",
     "description": "Look up Channel Item Type Report records - includes things like Channel Name, Product Name, Seller Sku Code.",
@@ -2549,7 +2855,8 @@
     ],
     "quick_filters": [
      "Channels"
-    ]
+    ],
+    "requires_scope": false
    },
    "Channel Sync Status": {
     "label": "Channel Sync Status",
@@ -2617,7 +2924,111 @@
     "quick_filters": [
      "Code contains",
      "Name contains"
-    ]
+    ],
+    "requires_scope": false
+   },
+   "Channel Prices Report": {
+    "label": "Channel Prices Report",
+    "description": "Look up Channel Prices Report records - includes things like channelName, SKU Code, Created.",
+    "anchor_table": "channel_item_type_price",
+    "anchor_alias": "citp",
+    "from_join_clause": "from channel_item_type_price citp\nleft join channel_item_type cit on citp.channel_item_type_id = cit.id\nleft join channel ch on cit.channel_id = ch.id\nleft join item_type it on cit.item_type_id = it.id",
+    "source": "export",
+    "export_name": "Prices Report",
+    "fields": [
+     {
+      "label": "channelName",
+      "expr": "ch.name"
+     },
+     {
+      "label": "SKU Code",
+      "expr": "it.sku_code"
+     },
+     {
+      "label": "Seller SKU on Channel",
+      "expr": "cit.seller_sku_code"
+     },
+     {
+      "label": "Channel Product Id",
+      "expr": "cit.channel_product_id"
+     },
+     {
+      "label": "Selling Price",
+      "expr": "citp.selling_price"
+     },
+     {
+      "label": "Transfer Price",
+      "expr": "citp.transfer_price"
+     },
+     {
+      "label": "Prices",
+      "expr": "citp.competitive_price"
+     },
+     {
+      "label": "MRP",
+      "expr": "citp.mrp"
+     },
+     {
+      "label": "MSP",
+      "expr": "citp.msp"
+     },
+     {
+      "label": "Currency",
+      "expr": "citp.currency_code"
+     },
+     {
+      "label": "Created",
+      "expr": "citp.created"
+     },
+     {
+      "label": "Updated",
+      "expr": "citp.updated"
+     }
+    ],
+    "quick_fields": [
+     "channelName",
+     "SKU Code",
+     "Created",
+     "Updated"
+    ],
+    "filters": [
+     {
+      "label": "Channels",
+      "condition": "ch.code in (:channelFilter)",
+      "type": "multiselect"
+     },
+     {
+      "label": "Sku Code Contains",
+      "condition": "it.sku_code= :mySkuFilter",
+      "type": "text"
+     },
+     {
+      "label": "Seller Sku Contains",
+      "condition": "cit.seller_sku_code= :sellerSkuFilter",
+      "type": "text"
+     },
+     {
+      "label": "Channel Product Id Contains",
+      "condition": "cit.channel_product_id= :channelProductIdFilter",
+      "type": "text"
+     },
+     {
+      "label": "Created in Date Range",
+      "condition": "citp.created &gt; :createdOnStart and citp.created &lt; :createdOnEnd",
+      "type": "daterange"
+     },
+     {
+      "label": "Updated in Date Range",
+      "condition": "citp.updated &gt; :updatedOnStart and citp.updated &lt; :updatedOnEnd",
+      "type": "daterange"
+     }
+    ],
+    "quick_filters": [
+     "Sku Code Contains",
+     "Channel Product Id Contains",
+     "Created in Date Range"
+    ],
+    "requires_scope": false
    }
   },
   "Facility": {
@@ -2759,7 +3170,8 @@
     "quick_filters": [
      "Updated in Date Range",
      "Created Date Range"
-    ]
+    ],
+    "requires_scope": false
    },
    "Facility Alias": {
     "label": "Facility Alias",
@@ -2824,7 +3236,8 @@
     ],
     "quick_filters": [
      "Facility Codes"
-    ]
+    ],
+    "requires_scope": false
    },
    "Facility Time Slot": {
     "label": "Facility Time Slot",
@@ -2866,7 +3279,8 @@
     ],
     "quick_filters": [
      "Facility Filter"
-    ]
+    ],
+    "requires_scope": false
    },
    "Facility Allocation Rules": {
     "label": "Facility Allocation Rules",
@@ -2907,8 +3321,18 @@
      "Facility Code",
      "Expression"
     ],
-    "filters": [],
-    "quick_filters": []
+    "filters": [
+     {
+      "label": "Tenant Code contains",
+      "condition": "t.code LIKE CONCAT('%', :tenantContains, '%')",
+      "type": "text"
+     }
+    ],
+    "quick_filters": [
+     "Tenant Code contains"
+    ],
+    "requires_scope": true,
+    "required_filter_label": "Tenant Code contains"
    },
    "Facility Enable": {
     "label": "Facility Enable",
@@ -3032,10 +3456,11 @@
     "quick_filters": [
      "Updated in Date Range",
      "Created Date Range"
-    ]
+    ],
+    "requires_scope": false
    }
   },
-  "SKU & Category": {
+  "Catalog": {
    "Item Master": {
     "label": "Item Master",
     "description": "Look up Item Master records - includes things like Category Code, Product Code, Name.",
@@ -3182,7 +3607,8 @@
     ],
     "quick_filters": [
      "Added in Date Range"
-    ]
+    ],
+    "requires_scope": false
    },
    "Item Barcodes": {
     "label": "Item Barcodes",
@@ -3319,7 +3745,8 @@
     "quick_filters": [
      "Item SkuCode",
      "Created Date Range"
-    ]
+    ],
+    "requires_scope": false
    },
    "Category": {
     "label": "Category",
@@ -3408,7 +3835,8 @@
     ],
     "quick_filters": [
      "Category Name Contains"
-    ]
+    ],
+    "requires_scope": false
    },
    "Category Section Mapping": {
     "label": "Category Section Mapping",
@@ -3438,7 +3866,8 @@
      "Enabled"
     ],
     "filters": [],
-    "quick_filters": []
+    "quick_filters": [],
+    "requires_scope": false
    },
    "Dropship Facility Item Master": {
     "label": "Dropship Facility Item Master",
@@ -3540,7 +3969,8 @@
     ],
     "quick_filters": [
      "Item SkuCode"
-    ]
+    ],
+    "requires_scope": false
    },
    "Tax Type Configuration": {
     "label": "Tax Type Configuration",
@@ -3627,10 +4057,11 @@
     ],
     "quick_filters": [
      "State Code"
-    ]
+    ],
+    "requires_scope": false
    }
   },
-  "Users": {
+  "Access / User": {
    "Users": {
     "label": "Users",
     "description": "Look up Users records - includes things like Name, User Name, Created.",
@@ -3715,7 +4146,8 @@
     ],
     "quick_filters": [
      "Created in Date Range"
-    ]
+    ],
+    "requires_scope": false
    },
    "Users Detailed View": {
     "label": "Users detailed view",
@@ -3770,6 +4202,11 @@
     ],
     "filters": [
      {
+      "label": "Tenant Code contains",
+      "condition": "t.code LIKE CONCAT('%', :tenantContains, '%')",
+      "type": "text"
+     },
+     {
       "label": "Name is",
       "condition": "u.name like :nameFilter",
       "type": "text"
@@ -3806,9 +4243,12 @@
      }
     ],
     "quick_filters": [
+     "Tenant Code contains",
      "Added in Date Range",
      "Last Login in Date Range"
-    ]
+    ],
+    "requires_scope": true,
+    "required_filter_label": "Tenant Code contains"
    },
    "User Comments": {
     "label": "User Comments",
@@ -3860,7 +4300,8 @@
     ],
     "quick_filters": [
      "Created Date Range"
-    ]
+    ],
+    "requires_scope": false
    },
    "Role": {
     "label": "Role",
@@ -3929,7 +4370,8 @@
     "quick_filters": [
      "Code contains",
      "Name contains"
-    ]
+    ],
+    "requires_scope": false
    },
    "Access Resource": {
     "label": "Access Resource",
@@ -3979,7 +4421,8 @@
     ],
     "quick_filters": [
      "Name contains"
-    ]
+    ],
+    "requires_scope": false
    },
    "Role -> Access Resource Mapping": {
     "label": "Role Access Resource Mapping",
@@ -4021,10 +4464,11 @@
      "Updated"
     ],
     "filters": [],
-    "quick_filters": []
+    "quick_filters": [],
+    "requires_scope": false
    }
   },
-  "Putaway": {
+  "Operations": {
    "Putaway": {
     "label": "Putaway",
     "description": "Look up Putaway records - includes things like Shelf Code, Putaway Code, Created.",
@@ -4137,7 +4581,8 @@
      "Item SkuCode",
      "Batch Code Contains",
      "Created in Date Range"
-    ]
+    ],
+    "requires_scope": false
    },
    "GRN/Gatepass to Putaway": {
     "label": "GRN/Gatepass to Putaway",
@@ -4245,7 +4690,8 @@
      "Item SkuCode",
      "Created in Date Range",
      "Updated in Date Range"
-    ]
+    ],
+    "requires_scope": false
    },
    "Pending Putaways": {
     "label": "Pending Putaways New",
@@ -4362,7 +4808,701 @@
      "Picklist Code",
      "Invoice Number",
      "Shipment # or Order #"
-    ]
+    ],
+    "requires_scope": false
+   },
+   "Work Order": {
+    "label": "Work Order",
+    "description": "Look up Work Order records - includes things like Code, Status Code, Quantity.",
+    "anchor_table": "work_order",
+    "anchor_alias": "work_order",
+    "from_join_clause": "FROM work_order work_order",
+    "source": "raw",
+    "export_name": null,
+    "fields": [
+     {
+      "label": "Id",
+      "expr": "work_order.id"
+     },
+     {
+      "label": "Facility Id",
+      "expr": "work_order.facility_id"
+     },
+     {
+      "label": "User Id",
+      "expr": "work_order.user_id"
+     },
+     {
+      "label": "Code",
+      "expr": "work_order.code"
+     },
+     {
+      "label": "Pick Set Id",
+      "expr": "work_order.pick_set_id"
+     },
+     {
+      "label": "Picklist Id",
+      "expr": "work_order.picklist_id"
+     },
+     {
+      "label": "Vendor Id",
+      "expr": "work_order.vendor_id"
+     },
+     {
+      "label": "Status Code",
+      "expr": "work_order.status_code"
+     },
+     {
+      "label": "Type",
+      "expr": "work_order.type"
+     },
+     {
+      "label": "Item Type Id",
+      "expr": "work_order.item_type_id"
+     },
+     {
+      "label": "Quantity",
+      "expr": "work_order.quantity"
+     },
+     {
+      "label": "Mrp",
+      "expr": "work_order.mrp"
+     },
+     {
+      "label": "Cost",
+      "expr": "work_order.cost"
+     },
+     {
+      "label": "Vendor Batch Number",
+      "expr": "work_order.vendor_batch_number"
+     },
+     {
+      "label": "Country Of Origin",
+      "expr": "work_order.country_of_origin"
+     },
+     {
+      "label": "Bill Of Entry",
+      "expr": "work_order.bill_of_entry"
+     },
+     {
+      "label": "Manufacturing Date",
+      "expr": "work_order.manufacturing_date"
+     },
+     {
+      "label": "Expiry Date",
+      "expr": "work_order.expiry_date"
+     },
+     {
+      "label": "Created",
+      "expr": "work_order.created"
+     },
+     {
+      "label": "Updated",
+      "expr": "work_order.updated"
+     },
+     {
+      "label": "Completed Quantity",
+      "expr": "work_order.completed_quantity"
+     },
+     {
+      "label": "Putaway Id",
+      "expr": "work_order.putaway_id"
+     },
+     {
+      "label": "Batch Id",
+      "expr": "work_order.batch_id"
+     },
+     {
+      "label": "Shelf Id",
+      "expr": "work_order.shelf_id"
+     },
+     {
+      "label": "Trade Price",
+      "expr": "work_order.trade_price"
+     }
+    ],
+    "quick_fields": [
+     "Code",
+     "Status Code",
+     "Quantity",
+     "Manufacturing Date",
+     "Expiry Date",
+     "Created",
+     "Updated",
+     "Completed Quantity"
+    ],
+    "filters": [
+     {
+      "label": "Code contains",
+      "condition": "work_order.code LIKE CONCAT('%', :codeContains, '%')",
+      "type": "text"
+     },
+     {
+      "label": "Status Code contains",
+      "condition": "work_order.status_code LIKE CONCAT('%', :status_codeContains, '%')",
+      "type": "text"
+     }
+    ],
+    "quick_filters": [
+     "Code contains",
+     "Status Code contains"
+    ],
+    "requires_scope": false
+   },
+   "Kit Composition": {
+    "label": "Kit Composition",
+    "description": "Look up Kit Composition records - includes things like Quantity, Created, Updated.",
+    "anchor_table": "kit_item_type",
+    "anchor_alias": "kit_item_type",
+    "from_join_clause": "FROM kit_item_type kit_item_type",
+    "source": "raw",
+    "export_name": null,
+    "fields": [
+     {
+      "label": "Id",
+      "expr": "kit_item_type.id"
+     },
+     {
+      "label": "Item Type Id",
+      "expr": "kit_item_type.item_type_id"
+     },
+     {
+      "label": "Component Sku Id",
+      "expr": "kit_item_type.component_sku_id"
+     },
+     {
+      "label": "Quantity",
+      "expr": "kit_item_type.quantity"
+     },
+     {
+      "label": "Created",
+      "expr": "kit_item_type.created"
+     },
+     {
+      "label": "Updated",
+      "expr": "kit_item_type.updated"
+     },
+     {
+      "label": "Unit Price",
+      "expr": "kit_item_type.unit_price"
+     }
+    ],
+    "quick_fields": [
+     "Quantity",
+     "Created",
+     "Updated"
+    ],
+    "filters": [],
+    "quick_filters": [],
+    "requires_scope": false
+   },
+   "Bundle": {
+    "label": "Bundle",
+    "description": "Look up Bundle records - includes things like Code, Created, Updated.",
+    "anchor_table": "bundle",
+    "anchor_alias": "bundle",
+    "from_join_clause": "FROM bundle bundle",
+    "source": "raw",
+    "export_name": null,
+    "fields": [
+     {
+      "label": "Id",
+      "expr": "bundle.id"
+     },
+     {
+      "label": "Tenant Id",
+      "expr": "bundle.tenant_id"
+     },
+     {
+      "label": "Code",
+      "expr": "bundle.code"
+     },
+     {
+      "label": "Item Type Id",
+      "expr": "bundle.item_type_id"
+     },
+     {
+      "label": "Tax Calculation Type",
+      "expr": "bundle.tax_calculation_type"
+     },
+     {
+      "label": "Created",
+      "expr": "bundle.created"
+     },
+     {
+      "label": "Updated",
+      "expr": "bundle.updated"
+     }
+    ],
+    "quick_fields": [
+     "Code",
+     "Created",
+     "Updated"
+    ],
+    "filters": [
+     {
+      "label": "Code contains",
+      "condition": "bundle.code LIKE CONCAT('%', :codeContains, '%')",
+      "type": "text"
+     }
+    ],
+    "quick_filters": [
+     "Code contains"
+    ],
+    "requires_scope": false
+   },
+   "Bundle Items (Roll-up SKU)": {
+    "label": "Bundle Items",
+    "description": "Look up Bundle Items records - includes things like Quantity, Created, Updated.",
+    "anchor_table": "bundle_item_type",
+    "anchor_alias": "bundle_item_type",
+    "from_join_clause": "FROM bundle_item_type bundle_item_type",
+    "source": "raw",
+    "export_name": null,
+    "fields": [
+     {
+      "label": "Id",
+      "expr": "bundle_item_type.id"
+     },
+     {
+      "label": "Bundle Id",
+      "expr": "bundle_item_type.bundle_id"
+     },
+     {
+      "label": "Item Type Id",
+      "expr": "bundle_item_type.item_type_id"
+     },
+     {
+      "label": "Quantity",
+      "expr": "bundle_item_type.quantity"
+     },
+     {
+      "label": "Price",
+      "expr": "bundle_item_type.price"
+     },
+     {
+      "label": "Price Ratio",
+      "expr": "bundle_item_type.price_ratio"
+     },
+     {
+      "label": "Created",
+      "expr": "bundle_item_type.created"
+     },
+     {
+      "label": "Updated",
+      "expr": "bundle_item_type.updated"
+     }
+    ],
+    "quick_fields": [
+     "Quantity",
+     "Created",
+     "Updated"
+    ],
+    "filters": [],
+    "quick_filters": [],
+    "requires_scope": false
+   },
+   "Cycle Count Overall Data": {
+    "label": "Cycle Count Overall Data",
+    "description": "Look up Cycle Count Overall Data records - includes things like Shelf Code, Product Name, Sku Code.",
+    "anchor_table": "cycle_count_item",
+    "anchor_alias": "cci",
+    "from_join_clause": "from cycle_count_item cci\njoin cycle_count_shelf_summary ccss on cci.cycle_count_shelf_summary_id=ccss.id\njoin user u on ccss.user_id=u.id\njoin sub_cycle_count scc on ccss.sub_cycle_count_id=scc.id\njoin cycle_count cc on scc.cycle_count_id=cc.id\njoin shelf s on ccss.shelf_id=s.id\njoin item_type it on it.sku_code=cci.sku_code\njoin vendor_item_type vit on it.id=vit.item_type_id\njoin party p on vit.vendor_id=p.id\njoin vendor v on p.id=v.id",
+    "source": "export",
+    "export_name": "Cycle Count Overall Data",
+    "fields": [
+     {
+      "label": "Discarded",
+      "expr": "cci.discarded"
+     },
+     {
+      "label": "Shelf Code",
+      "expr": "s.code"
+     },
+     {
+      "label": "Product Name",
+      "expr": "cci.item_type_name"
+     },
+     {
+      "label": "Seller",
+      "expr": "p.name"
+     },
+     {
+      "label": "Sku Code",
+      "expr": "cci.sku_code"
+     },
+     {
+      "label": "Expected Inventory",
+      "expr": "cci.expected_inventory"
+     },
+     {
+      "label": "Inventory Found",
+      "expr": "cci.expected_inventory + cci.inventory_difference"
+     },
+     {
+      "label": "Extra",
+      "expr": "if(cci.inventory_difference&gt;0,inventory_difference,0)"
+     },
+     {
+      "label": "Extra Reconciled",
+      "expr": "if(cci.inventory_difference&gt;0,inventory_difference - pending_reconciliation,0)"
+     },
+     {
+      "label": "Net Extra",
+      "expr": "if(cci.inventory_difference&gt;0,pending_reconciliation,0)"
+     },
+     {
+      "label": "Missing",
+      "expr": "if(cci.inventory_difference&lt;0,abs(cci.inventory_difference),0)"
+     },
+     {
+      "label": "Missing Reconciled",
+      "expr": "if(cci.inventory_difference&lt;0,abs(cci.inventory_difference) - pending_reconciliation,0)"
+     },
+     {
+      "label": "Net Missing",
+      "expr": "if(cci.inventory_difference&lt;0,pending_reconciliation,0)"
+     },
+     {
+      "label": "Username",
+      "expr": "u.username"
+     },
+     {
+      "label": "Created",
+      "expr": "cci.created"
+     }
+    ],
+    "quick_fields": [
+     "Shelf Code",
+     "Product Name",
+     "Sku Code",
+     "Username",
+     "Created"
+    ],
+    "filters": [
+     {
+      "label": "Item Type Name like",
+      "condition": "(cci.item_type_name like :itemTypeNameFilter)",
+      "type": "text"
+     },
+     {
+      "label": "SUPC equals",
+      "condition": "(cci.sku_code = :skuCodeFilter)",
+      "type": "text"
+     },
+     {
+      "label": "Shelf Code equals",
+      "condition": "(s.code = :shelfCodeFilter)",
+      "type": "text"
+     },
+     {
+      "label": "Cycle Count Code equals",
+      "condition": "(cc.code = :cycleCountCodeFilter)",
+      "type": "text"
+     },
+     {
+      "label": "Missing Filter",
+      "condition": "cci.inventory_difference&lt;0",
+      "type": "boolean"
+     },
+     {
+      "label": "Extra Filter",
+      "condition": "cci.inventory_difference&gt;0",
+      "type": "boolean"
+     }
+    ],
+    "quick_filters": [
+     "Shelf Code equals",
+     "Cycle Count Code equals"
+    ],
+    "requires_scope": false
+   },
+   "Cycle Count Report": {
+    "label": "CYCLE_COUNT_REPORT",
+    "description": "Look up CYCLE_COUNT_REPORT records - includes things like Cycle Count Code, Sub Cycle Count Code, Shelf Code.",
+    "anchor_table": "cycle_count",
+    "anchor_alias": "c",
+    "from_join_clause": "from cycle_count c\nleft join sub_cycle_count scc on scc.cycle_count_id = c.id\nleft join cycle_count_shelf_summary ccss on ccss.sub_cycle_count_id = scc.id\nleft join shelf s on s.id = ccss.shelf_id\nleft join user u on ccss.user_id = u.id",
+    "source": "export",
+    "export_name": "CYCLE_COUNT_REPORT",
+    "fields": [
+     {
+      "label": "Cycle Count Code",
+      "expr": "c.code"
+     },
+     {
+      "label": "Sub Cycle Count Code",
+      "expr": "scc.code"
+     },
+     {
+      "label": "Shelf Code",
+      "expr": "s.code"
+     },
+     {
+      "label": "Shelf Code Status",
+      "expr": "s.status_code"
+     },
+     {
+      "label": "Item Codes",
+      "expr": "ccss.item_codes"
+     },
+     {
+      "label": "Updated",
+      "expr": "c.updated"
+     },
+     {
+      "label": "Shelf updated",
+      "expr": "case when ccss.active = 0 then ccss.updated else '' end "
+     },
+     {
+      "label": "User",
+      "expr": "u.username"
+     }
+    ],
+    "quick_fields": [
+     "Cycle Count Code",
+     "Sub Cycle Count Code",
+     "Shelf Code",
+     "Shelf Code Status",
+     "Item Codes",
+     "Updated",
+     "Shelf updated"
+    ],
+    "filters": [
+     {
+      "label": "Sub Cycle Count Code",
+      "condition": "scc.code= :subcycle",
+      "type": "text"
+     },
+     {
+      "label": "Cycle Count Status Code",
+      "condition": "c.status_code in :statuscode",
+      "type": "multiselect"
+     }
+    ],
+    "quick_filters": [
+     "Sub Cycle Count Code",
+     "Cycle Count Status Code"
+    ],
+    "requires_scope": false
+   },
+   "Cycle Count Non-Barcoded Items Report": {
+    "label": "Cycle Count Non-Barcoded Items Report",
+    "description": "Look up Cycle Count Non-Barcoded Items Report records - includes things like Cycle Count code, Shelf Name, Non Barcoded Item Count.",
+    "anchor_table": "cycle_count",
+    "anchor_alias": "cc",
+    "from_join_clause": "from cycle_count cc\njoin sub_cycle_count scc ON scc.cycle_count_id = cc.id\njoin cycle_count_shelf_summary ccss ON ccss.sub_cycle_count_id = scc.id\njoin shelf s ON ccss.shelf_id = s.id",
+    "source": "export",
+    "export_name": "CYCLE_COUNT_NONBARCODED_ITEMS_REPORT",
+    "fields": [
+     {
+      "label": "Cycle Count code",
+      "expr": "cc.code"
+     },
+     {
+      "label": "Shelf Name",
+      "expr": "s.code"
+     },
+     {
+      "label": "Non Barcoded Item Count",
+      "expr": "ccss.non_barcoded_item_count"
+     },
+     {
+      "label": "Cycle Count Created Date",
+      "expr": "cc.created"
+     },
+     {
+      "label": "Cycle Count Updated Date",
+      "expr": "cc.completed"
+     },
+     {
+      "label": "Cycle Count Status",
+      "expr": "cc.status_code"
+     }
+    ],
+    "quick_fields": [
+     "Cycle Count code",
+     "Shelf Name",
+     "Non Barcoded Item Count",
+     "Cycle Count Created Date",
+     "Cycle Count Updated Date",
+     "Cycle Count Status"
+    ],
+    "filters": [
+     {
+      "label": "Cycle Count created Date",
+      "condition": "cc.created &gt; :createdOnStart and cc.created &lt; :createdOnEnd",
+      "type": "daterange"
+     },
+     {
+      "label": "Cycle Count Updated Date",
+      "condition": "cc.completed &gt; :updatedOnStart and cc.completed &lt; :updatedOnEnd",
+      "type": "daterange"
+     }
+    ],
+    "quick_filters": [
+     "Cycle Count created Date"
+    ],
+    "requires_scope": false
+   },
+   "Shelf Report": {
+    "label": "Shelf Report",
+    "description": "Look up Shelf Report records - includes things like Shelf Code, Shelf Type Code, Section Code.",
+    "anchor_table": "shelf",
+    "anchor_alias": "sh",
+    "from_join_clause": "from shelf sh\nleft join shelf_type sht on sh.shelf_type_id = sht.id\nleft join section sec on sh.section_id = sec.id\nleft join pick_set ps on ps.id = sec.pick_set_id",
+    "source": "export",
+    "export_name": "Shelf Report",
+    "fields": [
+     {
+      "label": "Shelf Code",
+      "expr": "sh.code"
+     },
+     {
+      "label": "Shelf Type Code",
+      "expr": "sht.code"
+     },
+     {
+      "label": "Section Code",
+      "expr": "sec.code"
+     },
+     {
+      "label": "Enabled",
+      "expr": "sht.enabled"
+     },
+     {
+      "label": "Shelf Status Code",
+      "expr": "sh.status_code"
+     },
+     {
+      "label": "Zone",
+      "expr": "ps.name"
+     },
+     {
+      "label": "Inventory Allocation",
+      "expr": "sh.enabled_for_inventory_allocation"
+     },
+     {
+      "label": "Inventory Sync",
+      "expr": "sh.enabled_for_inventory_sync"
+     },
+     {
+      "label": "Sku Mixing",
+      "expr": "sh.enabled_for_sku_mixing"
+     },
+     {
+      "label": "Shelf on Hold",
+      "expr": "sh.on_hold"
+     }
+    ],
+    "quick_fields": [
+     "Shelf Code",
+     "Shelf Type Code",
+     "Section Code",
+     "Shelf Status Code"
+    ],
+    "filters": [
+     {
+      "label": "Shelf Type Code Contains",
+      "condition": "sht.code like :codeFilter",
+      "type": "text"
+     },
+     {
+      "label": "Is Enabled",
+      "condition": "sht.enabled = :enabledFilter",
+      "type": "boolean"
+     },
+     {
+      "label": "Zone Name Contains",
+      "condition": "ps.name like :zoneFilter",
+      "type": "text"
+     },
+     {
+      "label": "Section Code Contains",
+      "condition": "sec.code like :sectionFilter",
+      "type": "text"
+     },
+     {
+      "label": "Inventory Allocation",
+      "condition": "sh.enabled_for_inventory_allocation=:enabledForInventoryAllocationFilter",
+      "type": "boolean"
+     },
+     {
+      "label": "Inventory Sync",
+      "condition": "sh.enabled_for_inventory_sync=:enabledForInventorySyncFilter",
+      "type": "boolean"
+     },
+     {
+      "label": "Sku Mixing",
+      "condition": "sh.enabled_for_sku_mixing=:enabledForSkuMixingFilter",
+      "type": "boolean"
+     },
+     {
+      "label": "Shelf on hold",
+      "condition": "sh.on_hold=:enabledForShelfHoldFilter",
+      "type": "boolean"
+     }
+    ],
+    "quick_filters": [
+     "Shelf Type Code Contains",
+     "Section Code Contains"
+    ],
+    "requires_scope": false
+   },
+   "Warehouse Productivity Tracker": {
+    "label": "Warehouse Productivity Tracker",
+    "description": "Look up Warehouse Productivity Tracker records - includes things like No. of picklists generated, No. of picklist to-be processed, No. of picklists processed.",
+    "anchor_table": "picklist",
+    "anchor_alias": "p",
+    "from_join_clause": "from picklist p",
+    "source": "export",
+    "export_name": "PRODUCTIVITY TRACKER",
+    "fields": [
+     {
+      "label": "No. of picklists generated",
+      "expr": "count(*)"
+     },
+     {
+      "label": "No. of picklist to-be processed",
+      "expr": "query:SELECT(select count(*) from picklist where created &gt; :dateRangeStart and created &lt; :dateRangeEnd and facility_id = :facilityId) -(select count(*) from picklist where status_code='RECEIVING' and created &gt; :dateRangeStart and created &lt; :dateRangeEnd and facility_id = :facilityId)"
+     },
+     {
+      "label": "No. of picklists processed",
+      "expr": "query:select count(*) from picklist pl  where pl.status_code = 'CLOSED' and pl.created &gt; :dateRangeStart and pl.created &lt; :dateRangeEnd and pl.facility_id = :facilityId"
+     },
+     {
+      "label": "No. of packings performed",
+      "expr": "query:select count(*) from picklist p join picklist_item pi on p.id =pi.picklist_id  join shipping_package sp on pi.shipping_package_code= sp.code and sp.status_code ='PACKED' and p.created &gt; :dateRangeStart and p.created &lt; :dateRangeEnd and p.facility_id = :facilityId"
+     },
+     {
+      "label": "Total Item Picked",
+      "expr": "query:select count(*) from picklist p join  picklist_item pi on p.id =pi.picklist_id and pi.status_code ='COMPLETE' and p.created &gt; :dateRangeStart and p.created &lt; :dateRangeEnd and p.facility_id = :facilityId"
+     },
+     {
+      "label": "Total picking time (in hrs)",
+      "expr": "sum(ROUND(TIME_TO_SEC(TIMEDIFF(p.complete_picking, p.start_picking))/3600,0))"
+     },
+     {
+      "label": "Average Picking Time (in hrs)",
+      "expr": "query:select Round((select sum(ROUND(TIME_TO_SEC(TIMEDIFF(complete_picking, start_picking))/3600,0)) from picklist where created &gt; :dateRangeStart and created &lt; :dateRangeEnd and facility_id = :facilityId)/(select count(*) from picklist where status_code = 'CLOSED' and created &gt; :dateRangeStart and created &lt; :dateRangeEnd and facility_id = :facilityId))"
+     }
+    ],
+    "quick_fields": [
+     "No. of picklists generated",
+     "No. of picklist to-be processed",
+     "No. of picklists processed"
+    ],
+    "filters": [
+     {
+      "label": "Added in Date Range",
+      "condition": "p.created &gt; :dateRangeStart and p.created &lt; :dateRangeEnd",
+      "type": "daterange"
+     }
+    ],
+    "quick_filters": [
+     "Added in Date Range"
+    ],
+    "requires_scope": false
    }
   },
   "Returns": {
@@ -4492,7 +5632,8 @@
     ],
     "quick_filters": [
      "Reverse Pickup Created Date Range"
-    ]
+    ],
+    "requires_scope": false
    },
    "Reverse Pickup Payments": {
     "label": "Reverse Pickup Payments",
@@ -4573,7 +5714,8 @@
      "Reverse Pickup Code is",
      "Sale Order Code is",
      "Replacement Sale Order Code is"
-    ]
+    ],
+    "requires_scope": false
    },
    "Return Manifest": {
     "label": "Return Manifest",
@@ -4684,7 +5826,8 @@
     ],
     "quick_filters": [
      "Return Manifest Status"
-    ]
+    ],
+    "requires_scope": false
    },
    "Return Invoices": {
     "label": "Return Invoices",
@@ -4857,7 +6000,8 @@
      "Item SkuCode",
      "Added in Date Range",
      "Dispatched in Date Range"
-    ]
+    ],
+    "requires_scope": false
    },
    "Courier Returns": {
     "label": "Courier Returns",
@@ -4971,7 +6115,8 @@
     ],
     "quick_filters": [
      "Sale Order Created In Date Range"
-    ]
+    ],
+    "requires_scope": false
    },
    "Putback Pending": {
     "label": "Putback Pending All Facility",
@@ -5167,7 +6312,8 @@
      "Picklist Code",
      "Invoice Number",
      "Shipment # or Order #"
-    ]
+    ],
+    "requires_scope": false
    },
    "Not Found Audit": {
     "label": "NotFoundAuditExport",
@@ -5260,293 +6406,11 @@
     "quick_filters": [
      "Tenant ID",
      "Facility ID"
-    ]
+    ],
+    "requires_scope": false
    }
   },
-  "Work Order / Kitting / Roll-up SKU": {
-   "Work Order": {
-    "label": "Work Order",
-    "description": "Look up Work Order records - includes things like Code, Status Code, Quantity.",
-    "anchor_table": "work_order",
-    "anchor_alias": "work_order",
-    "from_join_clause": "FROM work_order work_order",
-    "source": "raw",
-    "export_name": null,
-    "fields": [
-     {
-      "label": "Id",
-      "expr": "work_order.id"
-     },
-     {
-      "label": "Facility Id",
-      "expr": "work_order.facility_id"
-     },
-     {
-      "label": "User Id",
-      "expr": "work_order.user_id"
-     },
-     {
-      "label": "Code",
-      "expr": "work_order.code"
-     },
-     {
-      "label": "Pick Set Id",
-      "expr": "work_order.pick_set_id"
-     },
-     {
-      "label": "Picklist Id",
-      "expr": "work_order.picklist_id"
-     },
-     {
-      "label": "Vendor Id",
-      "expr": "work_order.vendor_id"
-     },
-     {
-      "label": "Status Code",
-      "expr": "work_order.status_code"
-     },
-     {
-      "label": "Type",
-      "expr": "work_order.type"
-     },
-     {
-      "label": "Item Type Id",
-      "expr": "work_order.item_type_id"
-     },
-     {
-      "label": "Quantity",
-      "expr": "work_order.quantity"
-     },
-     {
-      "label": "Mrp",
-      "expr": "work_order.mrp"
-     },
-     {
-      "label": "Cost",
-      "expr": "work_order.cost"
-     },
-     {
-      "label": "Vendor Batch Number",
-      "expr": "work_order.vendor_batch_number"
-     },
-     {
-      "label": "Country Of Origin",
-      "expr": "work_order.country_of_origin"
-     },
-     {
-      "label": "Bill Of Entry",
-      "expr": "work_order.bill_of_entry"
-     },
-     {
-      "label": "Manufacturing Date",
-      "expr": "work_order.manufacturing_date"
-     },
-     {
-      "label": "Expiry Date",
-      "expr": "work_order.expiry_date"
-     },
-     {
-      "label": "Created",
-      "expr": "work_order.created"
-     },
-     {
-      "label": "Updated",
-      "expr": "work_order.updated"
-     },
-     {
-      "label": "Completed Quantity",
-      "expr": "work_order.completed_quantity"
-     },
-     {
-      "label": "Putaway Id",
-      "expr": "work_order.putaway_id"
-     },
-     {
-      "label": "Batch Id",
-      "expr": "work_order.batch_id"
-     },
-     {
-      "label": "Shelf Id",
-      "expr": "work_order.shelf_id"
-     },
-     {
-      "label": "Trade Price",
-      "expr": "work_order.trade_price"
-     }
-    ],
-    "quick_fields": [
-     "Code",
-     "Status Code",
-     "Quantity",
-     "Manufacturing Date",
-     "Expiry Date",
-     "Created",
-     "Updated",
-     "Completed Quantity"
-    ],
-    "filters": [
-     {
-      "label": "Code contains",
-      "condition": "work_order.code LIKE CONCAT('%', :codeContains, '%')",
-      "type": "text"
-     }
-    ],
-    "quick_filters": [
-     "Code contains"
-    ]
-   },
-   "Kit Composition": {
-    "label": "Kit Composition",
-    "description": "Look up Kit Composition records - includes things like Quantity, Created, Updated.",
-    "anchor_table": "kit_item_type",
-    "anchor_alias": "kit_item_type",
-    "from_join_clause": "FROM kit_item_type kit_item_type",
-    "source": "raw",
-    "export_name": null,
-    "fields": [
-     {
-      "label": "Id",
-      "expr": "kit_item_type.id"
-     },
-     {
-      "label": "Item Type Id",
-      "expr": "kit_item_type.item_type_id"
-     },
-     {
-      "label": "Component Sku Id",
-      "expr": "kit_item_type.component_sku_id"
-     },
-     {
-      "label": "Quantity",
-      "expr": "kit_item_type.quantity"
-     },
-     {
-      "label": "Created",
-      "expr": "kit_item_type.created"
-     },
-     {
-      "label": "Updated",
-      "expr": "kit_item_type.updated"
-     },
-     {
-      "label": "Unit Price",
-      "expr": "kit_item_type.unit_price"
-     }
-    ],
-    "quick_fields": [
-     "Quantity",
-     "Created",
-     "Updated"
-    ],
-    "filters": [],
-    "quick_filters": []
-   },
-   "Bundle": {
-    "label": "Bundle",
-    "description": "Look up Bundle records - includes things like Code, Created, Updated.",
-    "anchor_table": "bundle",
-    "anchor_alias": "bundle",
-    "from_join_clause": "FROM bundle bundle",
-    "source": "raw",
-    "export_name": null,
-    "fields": [
-     {
-      "label": "Id",
-      "expr": "bundle.id"
-     },
-     {
-      "label": "Tenant Id",
-      "expr": "bundle.tenant_id"
-     },
-     {
-      "label": "Code",
-      "expr": "bundle.code"
-     },
-     {
-      "label": "Item Type Id",
-      "expr": "bundle.item_type_id"
-     },
-     {
-      "label": "Tax Calculation Type",
-      "expr": "bundle.tax_calculation_type"
-     },
-     {
-      "label": "Created",
-      "expr": "bundle.created"
-     },
-     {
-      "label": "Updated",
-      "expr": "bundle.updated"
-     }
-    ],
-    "quick_fields": [
-     "Code",
-     "Created",
-     "Updated"
-    ],
-    "filters": [
-     {
-      "label": "Code contains",
-      "condition": "bundle.code LIKE CONCAT('%', :codeContains, '%')",
-      "type": "text"
-     }
-    ],
-    "quick_filters": [
-     "Code contains"
-    ]
-   },
-   "Bundle Items (Roll-up SKU)": {
-    "label": "Bundle Items",
-    "description": "Look up Bundle Items records - includes things like Quantity, Created, Updated.",
-    "anchor_table": "bundle_item_type",
-    "anchor_alias": "bundle_item_type",
-    "from_join_clause": "FROM bundle_item_type bundle_item_type",
-    "source": "raw",
-    "export_name": null,
-    "fields": [
-     {
-      "label": "Id",
-      "expr": "bundle_item_type.id"
-     },
-     {
-      "label": "Bundle Id",
-      "expr": "bundle_item_type.bundle_id"
-     },
-     {
-      "label": "Item Type Id",
-      "expr": "bundle_item_type.item_type_id"
-     },
-     {
-      "label": "Quantity",
-      "expr": "bundle_item_type.quantity"
-     },
-     {
-      "label": "Price",
-      "expr": "bundle_item_type.price"
-     },
-     {
-      "label": "Price Ratio",
-      "expr": "bundle_item_type.price_ratio"
-     },
-     {
-      "label": "Created",
-      "expr": "bundle_item_type.created"
-     },
-     {
-      "label": "Updated",
-      "expr": "bundle_item_type.updated"
-     }
-    ],
-    "quick_fields": [
-     "Quantity",
-     "Created",
-     "Updated"
-    ],
-    "filters": [],
-    "quick_filters": []
-   }
-  },
-  "Shipping Package": {
+  "Shipping": {
    "Shipping Package": {
     "label": "Shipping Package",
     "description": "Look up Shipping Package records - includes things like Status, Invoice Code, Shipping Address Name.",
@@ -5710,7 +6574,8 @@
      "Added in Date Range",
      "Dispatched in Date Range",
      "Delivered in Date Range"
-    ]
+    ],
+    "requires_scope": false
    },
    "Picklist": {
     "label": "Picklist",
@@ -5786,6 +6651,12 @@
     ],
     "filters": [
      {
+      "label": "Tenant Code (required)",
+      "condition": null,
+      "type": "text",
+      "resolves_join_token": "tenantId"
+     },
+     {
       "label": "Picklist No.",
       "condition": "p.code= :picklistCode",
       "type": "text"
@@ -5832,9 +6703,14 @@
      }
     ],
     "quick_filters": [
+     "Tenant Code (required)",
      "Item Type SkuCode",
      "Batch Code Contains",
      "Picklist No."
+    ],
+    "requires_scope": true,
+    "required_filter_labels": [
+     "Tenant Code (required)"
     ]
    },
    "Invoice": {
@@ -5983,7 +6859,8 @@
      "Item SkuCode",
      "Created in Date Range",
      "Dispatched in Date Range"
-    ]
+    ],
+    "requires_scope": false
    },
    "Shipping Manifest": {
     "label": "Shipping Manifest",
@@ -6117,7 +6994,8 @@
     "quick_filters": [
      "Added in Date Range",
      "Updated in Date Range"
-    ]
+    ],
+    "requires_scope": false
    },
    "Box / Packslip": {
     "label": "Box Packslip Report",
@@ -6209,7 +7087,8 @@
      "Display Order Code",
      "Added in Date Range",
      "Updated in Date Range"
-    ]
+    ],
+    "requires_scope": false
    },
    "Gatepass": {
     "label": "Gatepass",
@@ -6366,7 +7245,8 @@
     "quick_filters": [
      "Updated in Date Range",
      "Created Date Range"
-    ]
+    ],
+    "requires_scope": false
    },
    "Inbound Gatepass": {
     "label": "Inbound GatePass",
@@ -6440,10 +7320,11 @@
      "Gatepass Entry Code Equals",
      "Facility Code Filter",
      "Created in Date Range"
-    ]
+    ],
+    "requires_scope": false
    }
   },
-  "Reports": {
+  "Finance / Tax": {
    "Transaction Ledger": {
     "label": "Transaction Ledger",
     "description": "Look up Transaction Ledger records - includes things like SKU Code, SKU Name, Entity Code.",
@@ -6512,14 +7393,22 @@
     ],
     "filters": [
      {
+      "label": "Tenant Code contains",
+      "condition": "t.code LIKE CONCAT('%', :tenantContains, '%')",
+      "type": "text"
+     },
+     {
       "label": "Added in Date Range",
       "condition": "(X.inventory_updated_at &gt;= :addedOnStart and X.inventory_updated_at &lt; :addedOnEnd and X.entity = 'GRN') or (X.inventory_updated_at &gt;= :addedOnStart and X.inventory_updated_at &lt; :addedOnEnd and X.entity = 'INBOUND_GATEPASS') or (X.inventory_updated_at &gt;= :addedOnStart and X.inventory_updated_at &lt; :addedOnEnd and X.entity = 'PUTAWAY_RTO') or (X.inventory_updated_at &gt;= :addedOnStart and X.inventory_updated_at &lt; :addedOnEnd and X.entity = 'PUTAWAY_CIR') or (X.inventory_updated_at &gt;= :addedOnStart and X.inventory_updated_at &lt; :addedOnEnd and X.entity = 'PUTAWAY_CANCELLED_ITEM') or (X.inventory_updated_at &gt;= :addedOnStart and X.inventory_updated_at &lt; :addedOnEnd and X.entity = 'INVOICES') or (X.inventory_updated_at &gt;= :addedOnStart and X.inventory_updated_at &lt; :addedOnEnd and X.entity = 'INVENTORY_ADJUSTMENT') or (X.inventory_updated_at &gt;= :addedOnStart and X.inventory_updated_at &lt; :addedOnEnd and X.entity = 'OUTBOUND_GATEPASS') or (X.inventory_updated_at &gt;= :addedOnStart and X.inventory_updated_at &lt; :addedOnEnd and X.entity = 'BARCODED_UNINVOICED_SOI') or (X.inventory_updated_at &gt;= :addedOnStart and X.inventory_updated_at &lt; :addedOnEnd and X.entity = 'PARTIAL_PUTAWAYS') or (X.inventory_updated_at &gt;= :addedOnStart and X.inventory_updated_at &lt; :addedOnEnd and X.entity = 'Not Found') or (X.inventory_updated_at &gt;= :addedOnStart and X.inventory_updated_at &lt; :addedOnEnd and X.entity = 'PICKLIST') or (X.inventory_updated_at &gt;= :addedOnStart and X.inventory_updated_at &lt; :addedOnEnd and X.entity = 'PUTAWAY_PICKLIST_ITEM')",
       "type": "daterange"
      }
     ],
     "quick_filters": [
+     "Tenant Code contains",
      "Added in Date Range"
-    ]
+    ],
+    "requires_scope": true,
+    "required_filter_label": "Tenant Code contains"
    },
    "Facility Transaction Ledger": {
     "label": "Facility Transaction Ledger",
@@ -6589,14 +7478,22 @@
     ],
     "filters": [
      {
+      "label": "Tenant Code contains",
+      "condition": "t.code LIKE CONCAT('%', :tenantContains, '%')",
+      "type": "text"
+     },
+     {
       "label": "Added in Date Range",
       "condition": "(X.inventory_updated_at &gt;= :addedOnStart and X.inventory_updated_at &lt; :addedOnEnd and X.entity = 'GRN') or (X.inventory_updated_at &gt;= :addedOnStart and X.inventory_updated_at &lt; :addedOnEnd and X.entity = 'INBOUND_GATEPASS') or (X.inventory_updated_at &gt;= :addedOnStart and X.inventory_updated_at &lt; :addedOnEnd and X.entity = 'PUTAWAY_RTO') or (X.inventory_updated_at &gt;= :addedOnStart and X.inventory_updated_at &lt; :addedOnEnd and X.entity = 'PUTAWAY_CIR') or (X.inventory_updated_at &gt;= :addedOnStart and X.inventory_updated_at &lt; :addedOnEnd and X.entity = 'PUTAWAY_CANCELLED_ITEM') or (X.inventory_updated_at &gt;= :addedOnStart and X.inventory_updated_at &lt; :addedOnEnd and X.entity = 'INVOICES') or (X.inventory_updated_at &gt;= :addedOnStart and X.inventory_updated_at &lt; :addedOnEnd and X.entity = 'INVENTORY_ADJUSTMENT') or (X.inventory_updated_at &gt;= :addedOnStart and X.inventory_updated_at &lt; :addedOnEnd and X.entity = 'OUTBOUND_GATEPASS') or (X.inventory_updated_at &gt;= :addedOnStart and X.inventory_updated_at &lt; :addedOnEnd and X.entity = 'BARCODED_UNINVOICED_SOI') or (X.inventory_updated_at &gt;= :addedOnStart and X.inventory_updated_at &lt; :addedOnEnd and X.entity = 'PARTIAL_PUTAWAYS') or (X.inventory_updated_at &gt;= :addedOnStart and X.inventory_updated_at &lt; :addedOnEnd and X.entity = 'Not Found') or (X.inventory_updated_at &gt;= :addedOnStart and X.inventory_updated_at &lt; :addedOnEnd and X.entity = 'PICKLIST') or (X.inventory_updated_at &gt;= :addedOnStart and X.inventory_updated_at &lt; :addedOnEnd and X.entity = 'PUTAWAY_PICKLIST_ITEM')",
       "type": "daterange"
      }
     ],
     "quick_filters": [
+     "Tenant Code contains",
      "Added in Date Range"
-    ]
+    ],
+    "requires_scope": true,
+    "required_filter_label": "Tenant Code contains"
    },
    "HSN Summary Report": {
     "label": "HSN Summary Report",
@@ -6654,208 +7551,8 @@
     ],
     "quick_filters": [
      "Created in Date Range"
-    ]
-   },
-   "Sales Forecast Report": {
-    "label": "Sales Forecast Report",
-    "description": "Look up Sales Forecast Report records - includes things like Item Name, Item SkuCode, Item Created.",
-    "anchor_table": "sale_order_item",
-    "anchor_alias": "soi",
-    "from_join_clause": "from sale_order_item soi\njoin item_type it on ( it.tenant_id = :tenantId and soi.item_type_id = it.id\njoin category c on it.category_id = c.id\njoin item_type_inventory_snapshot itis on itis.item_type_id = it.id",
-    "source": "export",
-    "export_name": "Sales Forecast Report",
-    "fields": [
-     {
-      "label": "Item Name",
-      "expr": "it.name"
-     },
-     {
-      "label": "Item SkuCode",
-      "expr": "it.sku_code"
-     },
-     {
-      "label": "Item Category",
-      "expr": "c.name"
-     },
-     {
-      "label": "Item Created",
-      "expr": "DATEDIFF(now(),it.created)"
-     },
-     {
-      "label": "Item Created",
-      "expr": "COUNT(soi.id)"
-     },
-     {
-      "label": "Stock in Hand",
-      "expr": "itis.inventory"
-     }
     ],
-    "quick_fields": [
-     "Item Name",
-     "Item SkuCode",
-     "Item Created",
-     "Item Created"
-    ],
-    "filters": [
-     {
-      "label": "Last X Days (default 21 days)",
-      "condition": "1=1",
-      "type": "text"
-     }
-    ],
-    "quick_filters": [
-     "Last X Days (default 21 days)"
-    ]
-   },
-   "Aggregate Sales Report": {
-    "label": "Aggregate Sales Report",
-    "description": "Look up Aggregate Sales Report records - includes things like facility Name, Channel Name, Item SKU Code.",
-    "anchor_table": "sale_order_item",
-    "anchor_alias": "soi",
-    "from_join_clause": "FROM sale_order_item soi\njoin sale_order so on soi.sale_order_id = so.id\nleft join address_detail ad2 on so.billing_address_id = ad2.id\nleft join state s1 on s1.iso2_code = ad2.state_code and s1.country_code = ad2.country_code\nleft join item_type it on soi.item_type_id = it.id\nleft join tax_type tt on tt.id = it.gst_tax_type_id\nleft join shipping_package sp on soi.shipping_package_id = sp.id\nleft join invoice inv on inv.id=sp.invoice_id\nleft join invoice_item invt on invt.id = soi.invoice_item_id\nleft join facility f on soi.facility_id = f.id\nleft join party pf on f.id = pf.id\nleft join channel ch on so.channel_id = ch.id",
-    "source": "export",
-    "export_name": "Aggregate Sales Report",
-    "fields": [
-     {
-      "label": "facility Name",
-      "expr": "pf.code"
-     },
-     {
-      "label": "Channel Name",
-      "expr": "ch.name"
-     },
-     {
-      "label": "Billing Address State",
-      "expr": "s1.name"
-     },
-     {
-      "label": "Item SKU Code",
-      "expr": "it.sku_code"
-     },
-     {
-      "label": "MRP",
-      "expr": "it.max_retail_price"
-     },
-     {
-      "label": "GST Tax Type Code",
-      "expr": "tt.code"
-     },
-     {
-      "label": "Sale Order Item Code",
-      "expr": "count(distinct soi.code)"
-     },
-     {
-      "label": "Total Price",
-      "expr": "sum(soi.selling_price + soi.shipping_charges + soi.cash_on_delivery_charges)"
-     },
-     {
-      "label": "SGST",
-      "expr": "(select sum(state_gst/invt.quantity) from invoice_item_tax  where invt.id = invoice_item_id)"
-     },
-     {
-      "label": "Selling Price",
-      "expr": "sum(soi.selling_price)"
-     },
-     {
-      "label": "Cost Price",
-      "expr": "sum(soi.cost_price)"
-     },
-     {
-      "label": "Subtotal",
-      "expr": "sum((invt.subtotal + invt.discount)/invt.quantity)"
-     },
-     {
-      "label": "Discount",
-      "expr": "sum(soi.discount)"
-     },
-     {
-      "label": "CGST",
-      "expr": "(select sum(central_gst/invt.quantity) from invoice_item_tax where  invt.id = invoice_item_id)"
-     },
-     {
-      "label": "IGST",
-      "expr": "(select sum(integrated_gst/invt.quantity) from invoice_item_tax  where invt.id = invoice_item_id)"
-     },
-     {
-      "label": "Shipping Charges",
-      "expr": "sum(soi.shipping_charges)"
-     }
-    ],
-    "quick_fields": [
-     "facility Name",
-     "Channel Name",
-     "Item SKU Code",
-     "GST Tax Type Code",
-     "Sale Order Item Code"
-    ],
-    "filters": [
-     {
-      "label": "Invoiced in Date Range",
-      "condition": "inv.created &gt; :invoicedOnStart and inv.created &lt; :invoicedOnEnd",
-      "type": "daterange"
-     }
-    ],
-    "quick_filters": [
-     "Invoiced in Date Range"
-    ]
-   },
-   "Cycle Count Non-Barcoded Items Report": {
-    "label": "Cycle Count Non-Barcoded Items Report",
-    "description": "Look up Cycle Count Non-Barcoded Items Report records - includes things like Cycle Count code, Shelf Name, Non Barcoded Item Count.",
-    "anchor_table": "cycle_count",
-    "anchor_alias": "cc",
-    "from_join_clause": "from cycle_count cc\njoin sub_cycle_count scc ON scc.cycle_count_id = cc.id\njoin cycle_count_shelf_summary ccss ON ccss.sub_cycle_count_id = scc.id\njoin shelf s ON ccss.shelf_id = s.id",
-    "source": "export",
-    "export_name": "CYCLE_COUNT_NONBARCODED_ITEMS_REPORT",
-    "fields": [
-     {
-      "label": "Cycle Count code",
-      "expr": "cc.code"
-     },
-     {
-      "label": "Shelf Name",
-      "expr": "s.code"
-     },
-     {
-      "label": "Non Barcoded Item Count",
-      "expr": "ccss.non_barcoded_item_count"
-     },
-     {
-      "label": "Cycle Count Created Date",
-      "expr": "cc.created"
-     },
-     {
-      "label": "Cycle Count Updated Date",
-      "expr": "cc.completed"
-     },
-     {
-      "label": "Cycle Count Status",
-      "expr": "cc.status_code"
-     }
-    ],
-    "quick_fields": [
-     "Cycle Count code",
-     "Shelf Name",
-     "Non Barcoded Item Count",
-     "Cycle Count Created Date",
-     "Cycle Count Updated Date",
-     "Cycle Count Status"
-    ],
-    "filters": [
-     {
-      "label": "Cycle Count created Date",
-      "condition": "cc.created &gt; :createdOnStart and cc.created &lt; :createdOnEnd",
-      "type": "daterange"
-     },
-     {
-      "label": "Cycle Count Updated Date",
-      "condition": "cc.completed &gt; :updatedOnStart and cc.completed &lt; :updatedOnEnd",
-      "type": "daterange"
-     }
-    ],
-    "quick_filters": [
-     "Cycle Count created Date"
-    ]
+    "requires_scope": false
    },
    "GST E-Invoice": {
     "label": "GST Einvoice",
@@ -6905,7 +7602,8 @@
      "gsp_provider_name"
     ],
     "filters": [],
-    "quick_filters": []
+    "quick_filters": [],
+    "requires_scope": false
    },
    "Clear Tax Sale Report": {
     "label": "Clear Tax Sale Report",
@@ -7032,7 +7730,8 @@
     ],
     "quick_filters": [
      "Invoiced in Date Range"
-    ]
+    ],
+    "requires_scope": false
    },
    "Clear Tax Credit Note": {
     "label": "Clear Tax Credit Note",
@@ -7160,7 +7859,8 @@
     ],
     "quick_filters": [
      "Returned in Date Range"
-    ]
+    ],
+    "requires_scope": false
    },
    "Tally ERP9": {
     "label": "Tally ERP9",
@@ -7260,7 +7960,8 @@
     ],
     "quick_filters": [
      "Invoiced in Date Range"
-    ]
+    ],
+    "requires_scope": false
    },
    "Tally GST Report": {
     "label": "Tally GST Report",
@@ -7401,7 +8102,8 @@
     "quick_filters": [
      "Created in Date Range",
      "Date Range"
-    ]
+    ],
+    "requires_scope": false
    },
    "Tally Return GST Report": {
     "label": "Tally Return GST Report",
@@ -7536,449 +8238,149 @@
     ],
     "quick_filters": [
      "Returned in Date Range"
-    ]
-   },
-   "Warehouse Productivity Tracker": {
-    "label": "Warehouse Productivity Tracker",
-    "description": "Look up Warehouse Productivity Tracker records - includes things like No. of picklists generated, No. of picklist to-be processed, No. of picklists processed.",
-    "anchor_table": "picklist",
-    "anchor_alias": "p",
-    "from_join_clause": "from picklist p",
-    "source": "export",
-    "export_name": "PRODUCTIVITY TRACKER",
-    "fields": [
-     {
-      "label": "No. of picklists generated",
-      "expr": "count(*)"
-     },
-     {
-      "label": "No. of picklist to-be processed",
-      "expr": "query:SELECT(select count(*) from picklist where created &gt; :dateRangeStart and created &lt; :dateRangeEnd and facility_id = :facilityId) -(select count(*) from picklist where status_code='RECEIVING' and created &gt; :dateRangeStart and created &lt; :dateRangeEnd and facility_id = :facilityId)"
-     },
-     {
-      "label": "No. of picklists processed",
-      "expr": "query:select count(*) from picklist pl  where pl.status_code = 'CLOSED' and pl.created &gt; :dateRangeStart and pl.created &lt; :dateRangeEnd and pl.facility_id = :facilityId"
-     },
-     {
-      "label": "No. of packings performed",
-      "expr": "query:select count(*) from picklist p join picklist_item pi on p.id =pi.picklist_id  join shipping_package sp on pi.shipping_package_code= sp.code and sp.status_code ='PACKED' and p.created &gt; :dateRangeStart and p.created &lt; :dateRangeEnd and p.facility_id = :facilityId"
-     },
-     {
-      "label": "Total Item Picked",
-      "expr": "query:select count(*) from picklist p join  picklist_item pi on p.id =pi.picklist_id and pi.status_code ='COMPLETE' and p.created &gt; :dateRangeStart and p.created &lt; :dateRangeEnd and p.facility_id = :facilityId"
-     },
-     {
-      "label": "Total picking time (in hrs)",
-      "expr": "sum(ROUND(TIME_TO_SEC(TIMEDIFF(p.complete_picking, p.start_picking))/3600,0))"
-     },
-     {
-      "label": "Average Picking Time (in hrs)",
-      "expr": "query:select Round((select sum(ROUND(TIME_TO_SEC(TIMEDIFF(complete_picking, start_picking))/3600,0)) from picklist where created &gt; :dateRangeStart and created &lt; :dateRangeEnd and facility_id = :facilityId)/(select count(*) from picklist where status_code = 'CLOSED' and created &gt; :dateRangeStart and created &lt; :dateRangeEnd and facility_id = :facilityId))"
-     }
     ],
-    "quick_fields": [
-     "No. of picklists generated",
-     "No. of picklist to-be processed",
-     "No. of picklists processed"
-    ],
-    "filters": [
-     {
-      "label": "Added in Date Range",
-      "condition": "p.created &gt; :dateRangeStart and p.created &lt; :dateRangeEnd",
-      "type": "daterange"
-     }
-    ],
-    "quick_filters": [
-     "Added in Date Range"
-    ]
-   },
-   "Channel Prices Report": {
-    "label": "Channel Prices Report",
-    "description": "Look up Channel Prices Report records - includes things like channelName, SKU Code, Created.",
-    "anchor_table": "channel_item_type_price",
-    "anchor_alias": "citp",
-    "from_join_clause": "from channel_item_type_price citp\nleft join channel_item_type cit on citp.channel_item_type_id = cit.id\nleft join channel ch on cit.channel_id = ch.id\nleft join item_type it on cit.item_type_id = it.id",
-    "source": "export",
-    "export_name": "Prices Report",
-    "fields": [
-     {
-      "label": "channelName",
-      "expr": "ch.name"
-     },
-     {
-      "label": "SKU Code",
-      "expr": "it.sku_code"
-     },
-     {
-      "label": "Seller SKU on Channel",
-      "expr": "cit.seller_sku_code"
-     },
-     {
-      "label": "Channel Product Id",
-      "expr": "cit.channel_product_id"
-     },
-     {
-      "label": "Selling Price",
-      "expr": "citp.selling_price"
-     },
-     {
-      "label": "Transfer Price",
-      "expr": "citp.transfer_price"
-     },
-     {
-      "label": "Prices",
-      "expr": "citp.competitive_price"
-     },
-     {
-      "label": "MRP",
-      "expr": "citp.mrp"
-     },
-     {
-      "label": "MSP",
-      "expr": "citp.msp"
-     },
-     {
-      "label": "Currency",
-      "expr": "citp.currency_code"
-     },
-     {
-      "label": "Created",
-      "expr": "citp.created"
-     },
-     {
-      "label": "Updated",
-      "expr": "citp.updated"
-     }
-    ],
-    "quick_fields": [
-     "channelName",
-     "SKU Code",
-     "Created",
-     "Updated"
-    ],
-    "filters": [
-     {
-      "label": "Channels",
-      "condition": "ch.code in (:channelFilter)",
-      "type": "multiselect"
-     },
-     {
-      "label": "Sku Code Contains",
-      "condition": "it.sku_code= :mySkuFilter",
-      "type": "text"
-     },
-     {
-      "label": "Seller Sku Contains",
-      "condition": "cit.seller_sku_code= :sellerSkuFilter",
-      "type": "text"
-     },
-     {
-      "label": "Channel Product Id Contains",
-      "condition": "cit.channel_product_id= :channelProductIdFilter",
-      "type": "text"
-     },
-     {
-      "label": "Created in Date Range",
-      "condition": "citp.created &gt; :createdOnStart and citp.created &lt; :createdOnEnd",
-      "type": "daterange"
-     },
-     {
-      "label": "Updated in Date Range",
-      "condition": "citp.updated &gt; :updatedOnStart and citp.updated &lt; :updatedOnEnd",
-      "type": "daterange"
-     }
-    ],
-    "quick_filters": [
-     "Sku Code Contains",
-     "Channel Product Id Contains",
-     "Created in Date Range"
-    ]
+    "requires_scope": false
    }
   },
-  "Cycle Count": {
-   "Cycle Count Overall Data": {
-    "label": "Cycle Count Overall Data",
-    "description": "Look up Cycle Count Overall Data records - includes things like Shelf Code, Product Name, Sku Code.",
-    "anchor_table": "cycle_count_item",
-    "anchor_alias": "cci",
-    "from_join_clause": "from cycle_count_item cci\njoin cycle_count_shelf_summary ccss on cci.cycle_count_shelf_summary_id=ccss.id\njoin user u on ccss.user_id=u.id\njoin sub_cycle_count scc on ccss.sub_cycle_count_id=scc.id\njoin cycle_count cc on scc.cycle_count_id=cc.id\njoin shelf s on ccss.shelf_id=s.id\njoin item_type it on it.sku_code=cci.sku_code\njoin vendor_item_type vit on it.id=vit.item_type_id\njoin party p on vit.vendor_id=p.id\njoin vendor v on p.id=v.id",
-    "source": "export",
-    "export_name": "Cycle Count Overall Data",
+  "Audit / History": {
+   "Shipping Provider Change History": {
+    "label": "Shipping Provider Change History",
+    "description": "See who enabled/disabled a shipping provider, and when. Requires Tenant Code, Shipping Provider Code, and a date range - notification history is a very large table, and these three together keep the search fast and precise.",
+    "anchor_table": "notification",
+    "anchor_alias": "n",
+    "from_join_clause": "FROM tenant t\nJOIN shipping_provider sp ON sp.tenant_id = t.id\nJOIN notification n ON n.identifier = sp.id AND n.entity = 'ShippingProvider' AND n.tenant_id = t.id\nLEFT JOIN user u ON n.user_id = u.id",
+    "source": "raw",
+    "export_name": null,
     "fields": [
      {
-      "label": "Discarded",
-      "expr": "cci.discarded"
+      "label": "Shipping Provider Code",
+      "expr": "sp.code"
      },
      {
-      "label": "Shelf Code",
-      "expr": "s.code"
+      "label": "Field Changed",
+      "expr": "n.field"
      },
      {
-      "label": "Product Name",
-      "expr": "cci.item_type_name"
+      "label": "Old Value",
+      "expr": "n.old_value"
      },
      {
-      "label": "Seller",
-      "expr": "p.name"
+      "label": "New Value",
+      "expr": "n.new_value"
      },
      {
-      "label": "Sku Code",
-      "expr": "cci.sku_code"
+      "label": "Changed At",
+      "expr": "n.created"
      },
      {
-      "label": "Expected Inventory",
-      "expr": "cci.expected_inventory"
-     },
-     {
-      "label": "Inventory Found",
-      "expr": "cci.expected_inventory + cci.inventory_difference"
-     },
-     {
-      "label": "Extra",
-      "expr": "if(cci.inventory_difference&gt;0,inventory_difference,0)"
-     },
-     {
-      "label": "Extra Reconciled",
-      "expr": "if(cci.inventory_difference&gt;0,inventory_difference - pending_reconciliation,0)"
-     },
-     {
-      "label": "Net Extra",
-      "expr": "if(cci.inventory_difference&gt;0,pending_reconciliation,0)"
-     },
-     {
-      "label": "Missing",
-      "expr": "if(cci.inventory_difference&lt;0,abs(cci.inventory_difference),0)"
-     },
-     {
-      "label": "Missing Reconciled",
-      "expr": "if(cci.inventory_difference&lt;0,abs(cci.inventory_difference) - pending_reconciliation,0)"
-     },
-     {
-      "label": "Net Missing",
-      "expr": "if(cci.inventory_difference&lt;0,pending_reconciliation,0)"
-     },
-     {
-      "label": "Username",
-      "expr": "u.username"
-     },
-     {
-      "label": "Created",
-      "expr": "cci.created"
-     }
-    ],
-    "quick_fields": [
-     "Shelf Code",
-     "Product Name",
-     "Sku Code",
-     "Username",
-     "Created"
-    ],
-    "filters": [
-     {
-      "label": "Item Type Name like",
-      "condition": "(cci.item_type_name like :itemTypeNameFilter)",
-      "type": "text"
-     },
-     {
-      "label": "SUPC equals",
-      "condition": "(cci.sku_code = :skuCodeFilter)",
-      "type": "text"
-     },
-     {
-      "label": "Shelf Code equals",
-      "condition": "(s.code = :shelfCodeFilter)",
-      "type": "text"
-     },
-     {
-      "label": "Cycle Count Code equals",
-      "condition": "(cc.code = :cycleCountCodeFilter)",
-      "type": "text"
-     },
-     {
-      "label": "Missing Filter",
-      "condition": "cci.inventory_difference&lt;0",
-      "type": "boolean"
-     },
-     {
-      "label": "Extra Filter",
-      "condition": "cci.inventory_difference&gt;0",
-      "type": "boolean"
-     }
-    ],
-    "quick_filters": [
-     "Shelf Code equals",
-     "Cycle Count Code equals"
-    ]
-   },
-   "Cycle Count Report": {
-    "label": "CYCLE_COUNT_REPORT",
-    "description": "Look up CYCLE_COUNT_REPORT records - includes things like Cycle Count Code, Sub Cycle Count Code, Shelf Code.",
-    "anchor_table": "cycle_count",
-    "anchor_alias": "c",
-    "from_join_clause": "from cycle_count c\nleft join sub_cycle_count scc on scc.cycle_count_id = c.id\nleft join cycle_count_shelf_summary ccss on ccss.sub_cycle_count_id = scc.id\nleft join shelf s on s.id = ccss.shelf_id\nleft join user u on ccss.user_id = u.id",
-    "source": "export",
-    "export_name": "CYCLE_COUNT_REPORT",
-    "fields": [
-     {
-      "label": "Cycle Count Code",
-      "expr": "c.code"
-     },
-     {
-      "label": "Sub Cycle Count Code",
-      "expr": "scc.code"
-     },
-     {
-      "label": "Shelf Code",
-      "expr": "s.code"
-     },
-     {
-      "label": "Shelf Code Status",
-      "expr": "s.status_code"
-     },
-     {
-      "label": "Item Codes",
-      "expr": "ccss.item_codes"
-     },
-     {
-      "label": "Updated",
-      "expr": "c.updated"
-     },
-     {
-      "label": "Shelf updated",
-      "expr": "case when ccss.active = 0 then ccss.updated else '' end "
-     },
-     {
-      "label": "User",
+      "label": "Changed By",
       "expr": "u.username"
      }
     ],
     "quick_fields": [
-     "Cycle Count Code",
-     "Sub Cycle Count Code",
-     "Shelf Code",
-     "Shelf Code Status",
-     "Item Codes",
-     "Updated",
-     "Shelf updated"
+     "Field Changed",
+     "Old Value",
+     "New Value",
+     "Changed At",
+     "Changed By"
     ],
     "filters": [
      {
-      "label": "Sub Cycle Count Code",
-      "condition": "scc.code= :subcycle",
+      "label": "Tenant Code (required)",
+      "condition": "t.code = :tenantCode",
       "type": "text"
      },
      {
-      "label": "Cycle Count Status Code",
-      "condition": "c.status_code in :statuscode",
-      "type": "multiselect"
+      "label": "Shipping Provider Code (required)",
+      "condition": "sp.code = :providerCode",
+      "type": "text"
+     },
+     {
+      "label": "Date Range (required)",
+      "condition": "n.created >= :dateStart and n.created <= :dateEnd",
+      "type": "daterange"
      }
     ],
     "quick_filters": [
-     "Sub Cycle Count Code",
-     "Cycle Count Status Code"
+     "Tenant Code (required)",
+     "Shipping Provider Code (required)",
+     "Date Range (required)"
+    ],
+    "requires_scope": true,
+    "required_filter_labels": [
+     "Tenant Code (required)",
+     "Shipping Provider Code (required)",
+     "Date Range (required)"
     ]
    },
-   "Shelf Report": {
-    "label": "Shelf Report",
-    "description": "Look up Shelf Report records - includes things like Shelf Code, Shelf Type Code, Section Code.",
-    "anchor_table": "shelf",
-    "anchor_alias": "sh",
-    "from_join_clause": "from shelf sh\nleft join shelf_type sht on sh.shelf_type_id = sht.id\nleft join section sec on sh.section_id = sec.id\nleft join pick_set ps on ps.id = sec.pick_set_id",
-    "source": "export",
-    "export_name": "Shelf Report",
+   "Shipping Package Status History": {
+    "label": "Shipping Package Status History",
+    "description": "See the status/field change history for a shipping package - who did what, and when. Requires Tenant Code, Shipping Package Code, and a date range for the same reason as above.",
+    "anchor_table": "notification",
+    "anchor_alias": "n",
+    "from_join_clause": "FROM tenant t\nJOIN shipping_package sp ON sp.tenant_id = t.id\nJOIN notification n ON n.identifier = sp.id AND n.entity = 'ShippingPackage' AND n.tenant_id = t.id\nLEFT JOIN user u ON n.user_id = u.id",
+    "source": "raw",
+    "export_name": null,
     "fields": [
      {
-      "label": "Shelf Code",
-      "expr": "sh.code"
+      "label": "Shipping Package Code",
+      "expr": "sp.code"
      },
      {
-      "label": "Shelf Type Code",
-      "expr": "sht.code"
+      "label": "Field Changed",
+      "expr": "n.field"
      },
      {
-      "label": "Section Code",
-      "expr": "sec.code"
+      "label": "Old Value",
+      "expr": "n.old_value"
      },
      {
-      "label": "Enabled",
-      "expr": "sht.enabled"
+      "label": "New Value",
+      "expr": "n.new_value"
      },
      {
-      "label": "Shelf Status Code",
-      "expr": "sh.status_code"
+      "label": "Changed At",
+      "expr": "n.created"
      },
      {
-      "label": "Zone",
-      "expr": "ps.name"
-     },
-     {
-      "label": "Inventory Allocation",
-      "expr": "sh.enabled_for_inventory_allocation"
-     },
-     {
-      "label": "Inventory Sync",
-      "expr": "sh.enabled_for_inventory_sync"
-     },
-     {
-      "label": "Sku Mixing",
-      "expr": "sh.enabled_for_sku_mixing"
-     },
-     {
-      "label": "Shelf on Hold",
-      "expr": "sh.on_hold"
+      "label": "Changed By",
+      "expr": "u.username"
      }
     ],
     "quick_fields": [
-     "Shelf Code",
-     "Shelf Type Code",
-     "Section Code",
-     "Shelf Status Code"
+     "Field Changed",
+     "Old Value",
+     "New Value",
+     "Changed At",
+     "Changed By"
     ],
     "filters": [
      {
-      "label": "Shelf Type Code Contains",
-      "condition": "sht.code like :codeFilter",
+      "label": "Tenant Code (required)",
+      "condition": "t.code = :tenantCode",
       "type": "text"
      },
      {
-      "label": "Is Enabled",
-      "condition": "sht.enabled = :enabledFilter",
-      "type": "boolean"
-     },
-     {
-      "label": "Zone Name Contains",
-      "condition": "ps.name like :zoneFilter",
+      "label": "Shipping Package Code (required)",
+      "condition": "sp.code = :packageCode",
       "type": "text"
      },
      {
-      "label": "Section Code Contains",
-      "condition": "sec.code like :sectionFilter",
-      "type": "text"
-     },
-     {
-      "label": "Inventory Allocation",
-      "condition": "sh.enabled_for_inventory_allocation=:enabledForInventoryAllocationFilter",
-      "type": "boolean"
-     },
-     {
-      "label": "Inventory Sync",
-      "condition": "sh.enabled_for_inventory_sync=:enabledForInventorySyncFilter",
-      "type": "boolean"
-     },
-     {
-      "label": "Sku Mixing",
-      "condition": "sh.enabled_for_sku_mixing=:enabledForSkuMixingFilter",
-      "type": "boolean"
-     },
-     {
-      "label": "Shelf on hold",
-      "condition": "sh.on_hold=:enabledForShelfHoldFilter",
-      "type": "boolean"
+      "label": "Date Range (required)",
+      "condition": "n.created >= :dateStart and n.created <= :dateEnd",
+      "type": "daterange"
      }
     ],
     "quick_filters": [
-     "Shelf Type Code Contains",
-     "Section Code Contains"
+     "Tenant Code (required)",
+     "Shipping Package Code (required)",
+     "Date Range (required)"
+    ],
+    "requires_scope": true,
+    "required_filter_labels": [
+     "Tenant Code (required)",
+     "Shipping Package Code (required)",
+     "Date Range (required)"
     ]
    }
   }
