@@ -24,6 +24,16 @@ TABLES = schema["tables"]
 
 MAX_FIELDS_PER_SUBCAT = 25
 
+# Tables confirmed (via real query testing during this project) or strongly
+# expected to be very large and/or span many tenants/facilities within a
+# single shared schema. A search against these with no facility/tenant/SKU
+# scoping at all risks an unintentionally broad, expensive query - flagged
+# so the UI can require at least one scoping filter before running.
+HIGH_RISK_TABLES = {
+    "item_type_inventory", "item_type_inventory_allocation",
+    "inventory_adjustment", "inventory_ledger", "notification",
+}
+
 
 def humanize(col_name):
     return " ".join(w.capitalize() for w in col_name.split("_"))
@@ -57,6 +67,7 @@ def from_export(export_name, label=None):
         "quick_fields": quick_labels,
         "filters": filters,
         "quick_filters": quick_filter_labels,
+        "requires_scope": cfg["anchor_table"] in HIGH_RISK_TABLES,
     }
 
 
@@ -124,7 +135,7 @@ def from_raw_table(table, label, field_names=None, description=None):
     # dropping into Advanced mode
     all_col_names = {c["name"] for c in TABLES[table]["columns"]}
     filters = []
-    for search_col in ("code", "name"):
+    for search_col in ("code", "name", "sku_code", "facility_code", "shelf_code", "batch_code", "status_code"):
         if search_col in all_col_names:
             filters.append({
                 "label": f"{humanize(search_col)} contains",
@@ -144,19 +155,28 @@ def from_raw_table(table, label, field_names=None, description=None):
         "quick_fields": quick_labels,
         "filters": filters,
         "quick_filters": [f["label"] for f in filters],
+        "requires_scope": table in HIGH_RISK_TABLES,
     }
 
 
 TAXONOMY = {
-    "Sale Order": {
+    "Orders": {
         "Sale Orders": from_export("Sale Orders"),
         "Sale Order Margins": from_export("Sale Order Margins"),
         "Back Orders": from_export("Back Orders"),
         "Hopped Orders": from_export("Hopped orders"),
         "Customer Details": from_export("Copy of Customer Report", label="Customer Details"),
+        "Sales Forecast Report": from_export("Sales Forecast Report"),
+        "Aggregate Sales Report": from_export("Aggregate Sales Report"),
     },
     "Inventory": {
         "Shelfwise Inventory": from_export("Shelfwise Inventory"),
+        "Inventory Blocked Against Orders": from_raw_table(
+            "item_type_inventory_allocation", "Inventory Blocked Against Orders", None,
+            description="Find inventory reserved/blocked for specific sale orders - search by "
+                        "SKU or facility to see how much is allocated, and to which order, "
+                        "broken down by allocation status (ALLOCATED, ADDED_IN_PICKLIST, "
+                        "PICKLIST_SCAN_COMPLETE)."),
         "Inventory Worth": from_export("Inventory Worth"),
         "Inventory Worth By Category": from_export("Inventory Worth By Category"),
         "Inventory Aging": from_export("Inventory Aging"),
@@ -166,7 +186,7 @@ TAXONOMY = {
         "Fast Moving SKU": from_export("Fast Moving SKU"),
         "Expiring/Expired Inventory": from_export("Batching Expired Inventory"),
     },
-    "PO": {
+    "Purchasing": {
         "Purchase Orders": from_export("Purchase Orders"),
         "GRN": from_export("GRN"),
         "GRN-PO Mapping": from_export("GRN-PO Mapping"),
@@ -176,12 +196,13 @@ TAXONOMY = {
         "Unwanted Purchase Orders": from_export("Unwanted Purchase Orders"),
         "ASN": from_export("ASN report"),
     },
-    "Inventory Syncing": {
+    "Channels": {
         "Channel Item Type Sync": from_export("Channel Item Type Report"),
         "Channel Sync Status": from_raw_table(
             "channel", "Channel Sync Status",
             {"code", "source_code", "inventory_sync_status", "catalog_sync_status",
              "order_sync_status", "pricing_sync_status", "reconciliation_sync_status", "enabled"}),
+        "Channel Prices Report": from_export("Prices Report", label="Channel Prices Report"),
     },
     "Facility": {
         "Facility": from_export("Facility"),
@@ -190,7 +211,7 @@ TAXONOMY = {
         "Facility Allocation Rules": from_export("Facility Allocation Rules"),
         "Facility Enable": from_export("Facility Enable"),
     },
-    "SKU & Category": {
+    "Catalog": {
         "Item Master": from_export("Item Master"),
         "Item Barcodes": from_export("Item Barcodes"),
         "Category": from_export("Category"),
@@ -198,7 +219,7 @@ TAXONOMY = {
         "Dropship Facility Item Master": from_export("Dropship Facility Item Master"),
         "Tax Type Configuration": from_export("Tax Type Configuration"),
     },
-    "Users": {
+    "Access / User": {
         "Users": from_export("Users"),
         "Users Detailed View": from_export("Users detailed view"),
         "User Comments": from_export("User Comments"),
@@ -213,10 +234,21 @@ TAXONOMY = {
             description="See which access resources/permissions are granted to which role - "
                         "use this to check what a role (including PII-related roles) can access."),
     },
-    "Putaway": {
+    "Operations": {
         "Putaway": from_export("Putaway"),
         "GRN/Gatepass to Putaway": from_export("GRN/Gatepass to Putaway"),
         "Pending Putaways": from_export("Pending Putaways New"),
+        "Work Order": from_raw_table("work_order", "Work Order", None),
+        "Kit Composition": from_raw_table("kit_item_type", "Kit Composition", None),
+        "Bundle": from_raw_table("bundle", "Bundle", None),
+        "Bundle Items (Roll-up SKU)": from_raw_table("bundle_item_type", "Bundle Items", None),
+        "Cycle Count Overall Data": from_export("Cycle Count Overall Data"),
+        "Cycle Count Report": from_export("CYCLE_COUNT_REPORT"),
+        "Cycle Count Non-Barcoded Items Report": from_export("CYCLE_COUNT_NONBARCODED_ITEMS_REPORT",
+                                                               label="Cycle Count Non-Barcoded Items Report"),
+        "Shelf Report": from_export("Shelf Report"),
+        "Warehouse Productivity Tracker": from_export("PRODUCTIVITY TRACKER",
+                                                        label="Warehouse Productivity Tracker"),
     },
     "Returns": {
         "Reverse Pickup": from_export("Reverse Pickup"),
@@ -227,13 +259,7 @@ TAXONOMY = {
         "Putback Pending": from_export("Putback Pending All Facility"),
         "Not Found Audit": from_export("NotFoundAuditExport"),
     },
-    "Work Order / Kitting / Roll-up SKU": {
-        "Work Order": from_raw_table("work_order", "Work Order", None),
-        "Kit Composition": from_raw_table("kit_item_type", "Kit Composition", None),
-        "Bundle": from_raw_table("bundle", "Bundle", None),
-        "Bundle Items (Roll-up SKU)": from_raw_table("bundle_item_type", "Bundle Items", None),
-    },
-    "Shipping Package": {
+    "Shipping": {
         "Shipping Package": from_export("Shipping Package"),
         "Picklist": from_export("Picklist"),
         "Invoice": from_export("Invoice"),
@@ -242,28 +268,101 @@ TAXONOMY = {
         "Gatepass": from_export("Gatepass"),
         "Inbound Gatepass": from_export("Inbound GatePass"),
     },
-    "Reports": {
+    "Finance / Tax": {
         "Transaction Ledger": from_export("Transaction Ledger"),
         "Facility Transaction Ledger": from_export("Facility Transaction Ledger"),
         "HSN Summary Report": from_export("HSN Summary Report"),
-        "Sales Forecast Report": from_export("Sales Forecast Report"),
-        "Aggregate Sales Report": from_export("Aggregate Sales Report"),
-        "Cycle Count Non-Barcoded Items Report": from_export("CYCLE_COUNT_NONBARCODED_ITEMS_REPORT",
-                                                               label="Cycle Count Non-Barcoded Items Report"),
         "GST E-Invoice": from_export("GST Einvoice"),
         "Clear Tax Sale Report": from_export("Clear Tax Sale Report"),
         "Clear Tax Credit Note": from_export("Clear Tax Credit Note"),
         "Tally ERP9": from_export("Tally ERP9"),
         "Tally GST Report": from_export("Tally GST Report"),
         "Tally Return GST Report": from_export("Tally Return GST Report"),
-        "Warehouse Productivity Tracker": from_export("PRODUCTIVITY TRACKER",
-                                                        label="Warehouse Productivity Tracker"),
-        "Channel Prices Report": from_export("Prices Report", label="Channel Prices Report"),
     },
-    "Cycle Count": {
-        "Cycle Count Overall Data": from_export("Cycle Count Overall Data"),
-        "Cycle Count Report": from_export("CYCLE_COUNT_REPORT"),
-        "Shelf Report": from_export("Shelf Report"),
+    "Audit / History": {
+        # Hand-built, not from an export config - closes a real gap found
+        # during this project: investigating "who changed/disabled X" via
+        # the `notification` table (~193M rows) took several minutes and
+        # multiple round trips when done ad hoc, because `identifier`/
+        # `entity` aren't indexed - only (tenant_id, created) is. These
+        # reports tie tenant scoping directly into the indexed join column
+        # and require both Tenant Code and a date range before they can be
+        # added, so the generated query is fast and correct on the first
+        # try - no separate "fetch the internal id first" step needed,
+        # since the join resolves codes to ids internally.
+        "Shipping Provider Change History": {
+            "label": "Shipping Provider Change History",
+            "description": "See who enabled/disabled a shipping provider, and when. "
+                           "Requires Tenant Code, Shipping Provider Code, and a date "
+                           "range - notification history is a very large table, and "
+                           "these three together keep the search fast and precise.",
+            "anchor_table": "notification",
+            "anchor_alias": "n",
+            "from_join_clause": (
+                "FROM tenant t\n"
+                "JOIN shipping_provider sp ON sp.tenant_id = t.id\n"
+                "JOIN notification n ON n.identifier = sp.id AND n.entity = 'ShippingProvider' "
+                "AND n.tenant_id = t.id\n"
+                "LEFT JOIN user u ON n.user_id = u.id"
+            ),
+            "source": "raw",
+            "export_name": None,
+            "fields": [
+                {"label": "Shipping Provider Code", "expr": "sp.code"},
+                {"label": "Field Changed", "expr": "n.field"},
+                {"label": "Old Value", "expr": "n.old_value"},
+                {"label": "New Value", "expr": "n.new_value"},
+                {"label": "Changed At", "expr": "n.created"},
+                {"label": "Changed By", "expr": "u.username"},
+            ],
+            "quick_fields": ["Field Changed", "Old Value", "New Value", "Changed At", "Changed By"],
+            "filters": [
+                {"label": "Tenant Code (required)", "condition": "t.code = :tenantCode", "type": "text"},
+                {"label": "Shipping Provider Code (required)", "condition": "sp.code = :providerCode", "type": "text"},
+                {"label": "Date Range (required)",
+                 "condition": "n.created >= :dateStart and n.created <= :dateEnd", "type": "daterange"},
+            ],
+            "quick_filters": ["Tenant Code (required)", "Shipping Provider Code (required)", "Date Range (required)"],
+            "requires_scope": True,
+            "required_filter_labels": ["Tenant Code (required)", "Shipping Provider Code (required)",
+                                        "Date Range (required)"],
+        },
+        "Shipping Package Status History": {
+            "label": "Shipping Package Status History",
+            "description": "See the status/field change history for a shipping package - "
+                           "who did what, and when. Requires Tenant Code, Shipping Package "
+                           "Code, and a date range for the same reason as above.",
+            "anchor_table": "notification",
+            "anchor_alias": "n",
+            "from_join_clause": (
+                "FROM tenant t\n"
+                "JOIN shipping_package sp ON sp.tenant_id = t.id\n"
+                "JOIN notification n ON n.identifier = sp.id AND n.entity = 'ShippingPackage' "
+                "AND n.tenant_id = t.id\n"
+                "LEFT JOIN user u ON n.user_id = u.id"
+            ),
+            "source": "raw",
+            "export_name": None,
+            "fields": [
+                {"label": "Shipping Package Code", "expr": "sp.code"},
+                {"label": "Field Changed", "expr": "n.field"},
+                {"label": "Old Value", "expr": "n.old_value"},
+                {"label": "New Value", "expr": "n.new_value"},
+                {"label": "Changed At", "expr": "n.created"},
+                {"label": "Changed By", "expr": "u.username"},
+            ],
+            "quick_fields": ["Field Changed", "Old Value", "New Value", "Changed At", "Changed By"],
+            "filters": [
+                {"label": "Tenant Code (required)", "condition": "t.code = :tenantCode", "type": "text"},
+                {"label": "Shipping Package Code (required)", "condition": "sp.code = :packageCode", "type": "text"},
+                {"label": "Date Range (required)",
+                 "condition": "n.created >= :dateStart and n.created <= :dateEnd", "type": "daterange"},
+            ],
+            "quick_filters": ["Tenant Code (required)", "Shipping Package Code (required)", "Date Range (required)"],
+            "requires_scope": True,
+            "required_filter_labels": ["Tenant Code (required)", "Shipping Package Code (required)",
+                                        "Date Range (required)"],
+        },
     },
 }
 
@@ -284,6 +383,78 @@ print("Majors:", len(resolved))
 print("Sub-categories resolved:", sum(len(v) for v in resolved.values()))
 if dropped:
     print("Dropped (no verified source found):", dropped)
+
+# Two high-risk categories (large/wide tables) were confirmed to have no
+# facility-scoping filter at all in their real export config, even though
+# their own join chain already has a usable alias for it - inject one
+# rather than leave a broad-search risk with no way to narrow it in the
+# guided UI.
+SCOPE_FILTER_PATCHES = {
+    ("Inventory", "Shelfwise Inventory"): {
+        "label": "Facility Name contains",
+        "condition": "f.display_name LIKE CONCAT('%', :facilityContains, '%')",
+        "type": "text",
+    },
+    ("Inventory", "Inventory Adjustment"): {
+        "label": "Facility Name contains",
+        "condition": "f.display_name LIKE CONCAT('%', :facilityContains, '%')",
+        "type": "text",
+    },
+    ("Inventory", "Inventory Ledger"): {
+        "label": "Facility Id equals",
+        "condition": "il.facility_id = :facilityId",
+        "type": "number",
+    },
+    ("Facility", "Facility Allocation Rules"): {
+        "label": "Tenant Code contains",
+        "condition": "t.code LIKE CONCAT('%', :tenantContains, '%')",
+        "type": "text",
+    },
+    ("Access / User", "Users Detailed View"): {
+        "label": "Tenant Code contains",
+        "condition": "t.code LIKE CONCAT('%', :tenantContains, '%')",
+        "type": "text",
+    },
+    ("Finance / Tax", "Transaction Ledger"): {
+        "label": "Tenant Code contains",
+        "condition": "t.code LIKE CONCAT('%', :tenantContains, '%')",
+        "type": "text",
+    },
+    ("Finance / Tax", "Facility Transaction Ledger"): {
+        "label": "Tenant Code contains",
+        "condition": "t.code LIKE CONCAT('%', :tenantContains, '%')",
+        "type": "text",
+    },
+}
+for (maj, sub), patch in SCOPE_FILTER_PATCHES.items():
+    if maj in resolved and sub in resolved[maj]:
+        resolved[maj][sub]["filters"].insert(0, patch)
+        resolved[maj][sub]["quick_filters"] = [patch["label"]] + resolved[maj][sub]["quick_filters"]
+        resolved[maj][sub]["requires_scope"] = True
+        resolved[maj][sub]["required_filter_label"] = patch["label"]
+
+# Two categories were found (via testing) to have a Redash parameter
+# (:tenantId) baked directly into their JOIN chain itself, not just in a
+# filter condition - meaning the generated SQL was literally broken
+# (contained an unfilled ":tenantId" with no way to fill it). These need a
+# REQUIRED tenant-code filter whose value substitutes into the join chain
+# itself, not just the WHERE clause - handled specially in app.py via the
+# "resolves_join_token" marker.
+JOIN_TOKEN_PATCHES = {
+    ("Orders", "Sales Forecast Report"): "tenantId",
+    ("Shipping", "Picklist"): "tenantId",
+}
+for (maj, sub), token in JOIN_TOKEN_PATCHES.items():
+    if maj in resolved and sub in resolved[maj]:
+        resolved[maj][sub]["filters"].insert(0, {
+            "label": "Tenant Code (required)",
+            "condition": None,
+            "type": "text",
+            "resolves_join_token": token,
+        })
+        resolved[maj][sub]["quick_filters"] = ["Tenant Code (required)"] + resolved[maj][sub]["quick_filters"]
+        resolved[maj][sub]["requires_scope"] = True
+        resolved[maj][sub]["required_filter_labels"] = ["Tenant Code (required)"]
 
 output = {"categories": resolved}
 

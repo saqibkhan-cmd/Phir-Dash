@@ -108,7 +108,8 @@ else:
     st.stop()
 
 ADVANCED_LABEL = "Advanced / Custom Table"
-MAJOR_CATEGORIES = list(CATEGORIES.keys()) + [ADVANCED_LABEL]
+ENTRY_POINTS = ["Reports", ADVANCED_LABEL]
+DOMAINS = list(CATEGORIES.keys())
 
 
 @st.cache_data
@@ -158,10 +159,12 @@ def checkbox_grid(items, key_ns, n_cols=4, defaults=None):
 def render_filters(filters, key_ns, quick_labels=None):
     """Filters, most-common ones first and expanded by default, the rest
     tucked behind 'More search options' - so a newcomer sees 2-3 relevant
-    search boxes, not 17 at once. Returns filled WHERE conditions."""
+    search boxes, not 17 at once. Returns (filled WHERE conditions, set of
+    filter labels that were successfully filled)."""
     filled_conditions = []
+    satisfied_labels = set()
     if not filters:
-        return filled_conditions
+        return filled_conditions, satisfied_labels
 
     quick_labels = set(quick_labels or [])
     quick = [f for f in filters if f["label"] in quick_labels]
@@ -203,6 +206,7 @@ def render_filters(filters, key_ns, quick_labels=None):
                 else:
                     token_values[tok] = val.strip() if val.strip().replace(".", "").isdigit() else f"'{val.strip()}'"
         if all_filled and token_values:
+            satisfied_labels.add(filt["label"])
             return substitute_filter_tokens(condition, token_values)
         st.caption(f"　(fill in every value above to apply \"{filt['label']}\")")
         return None
@@ -219,7 +223,7 @@ def render_filters(filters, key_ns, quick_labels=None):
                 r = render_one(filt, f"r{fi}")
                 if r:
                     filled_conditions.append(r)
-    return filled_conditions
+    return filled_conditions, satisfied_labels
 
 
 st.title("Phir-Dash")
@@ -298,31 +302,108 @@ search_query = st.text_input(
     "🔍 Search for a report (try \"blocked inventory\", \"purchase order\", \"GRN\", \"who disabled\")",
     key="search_box",
 )
+
+# Small synonym set for common alternate phrasings of the same business
+# concept - not full NLP, but covers the terms that came up directly in
+# testing/feedback so a user isn't forced to guess the exact label wording.
+SEARCH_SYNONYMS = {
+    "blocked": ["reserved", "allocated", "hold", "stuck"],
+    "stuck": ["blocked", "pending", "held"],
+    "reserved": ["blocked", "allocated"],
+    "sync": ["synchronization", "synced"],
+    "disabled": ["enabled", "inactive"],
+    "po": ["purchase order"],
+    "grn": ["goods received", "inflow receipt"],
+    "sku": ["item", "item type"],
+    "vendor": ["supplier"],
+    "return": ["reverse pickup", "rto"],
+}
+STOPWORDS = {"is", "my", "the", "a", "an", "to", "for", "of", "in", "on", "not",
+             "why", "what", "who", "how", "does", "do", "did", "this", "that",
+             "and", "or", "with", "be", "it", "i", "am", "are", "was", "were"}
+
+
+def expand_query_words(query_lower):
+    words = [w for w in query_lower.split() if w not in STOPWORDS]
+    if not words:
+        words = query_lower.split()  # if it was ALL stopwords, keep something to search on
+    expanded = set(words)
+    for w in words:
+        expanded.update(SEARCH_SYNONYMS.get(w, []))
+    return words, expanded
+
+
 if search_query:
-    query_lower = search_query.lower()
+    content_words, query_words = expand_query_words(search_query.lower())
     matches = []
     for maj, subs in CATEGORIES.items():
         for sub, d in subs.items():
-            haystack = " ".join([
-                maj, sub, d.get("description", ""),
-                " ".join(f["label"] for f in d["fields"]),
-                " ".join(f["label"] for f in d["filters"]),
-            ]).lower()
-            if query_lower in haystack:
-                matches.append((haystack.count(query_lower), maj, sub))
-    matches.sort(key=lambda x: -x[0])
+            name_text = f"{maj} {sub}".lower()
+            desc_text = d.get("description", "").lower()
+            field_text = " ".join(f["label"] for f in d["fields"]).lower()
+            filter_text = " ".join(f["label"] for f in d["filters"]).lower()
+
+            score = 0
+            covered = 0
+            for w in query_words:
+                hit = False
+                if w in name_text:
+                    score += 10; hit = True
+                if w in desc_text:
+                    score += 5; hit = True
+                if w in field_text:
+                    score += 2; hit = True
+                if w in filter_text:
+                    score += 1; hit = True
+                if hit:
+                    covered += 1
+            # exact phrase (the literal content words, in order) appearing in
+            # the combined name is a strong signal; a near-exact match to the
+            # SUB-CATEGORY name alone (ignoring a trailing plural s) is a far
+            # stronger one - decisively prefers "Purchase Orders" over
+            # "Unwanted Purchase Orders" for the query "purchase order"
+            # rather than leaving it to incidental field/filter overlap
+            content_phrase = " ".join(content_words)
+            if content_phrase in name_text:
+                score += 50
+            sub_text = sub.lower()
+            if content_phrase in sub_text:
+                score += 30
+            if sub_text.rstrip("s") == content_phrase.rstrip("s"):
+                score += 100
+
+            # require at least half the meaningful (non-stopword) query
+            # terms to appear somewhere - not literally every token (natural
+            # sentences carry words no report will ever mention) and not
+            # just one incidental word either
+            needed = max(1, (len(content_words) + 1) // 2)
+            if covered >= needed:
+                matches.append((score, maj, sub))
+    matches.sort(key=lambda x: (-x[0], len(x[2])))
     if matches:
         st.caption(f"Found {len(matches)} matching report(s) - click one to jump straight there:")
         for _, maj, sub in matches[:8]:
             if st.button(f"{maj} → {sub}", key=f"searchjump__{maj}__{sub}"):
-                st.session_state["draft_major"] = maj
+                st.session_state["draft_entry"] = "Reports"
+                st.session_state["domain_select"] = maj
                 st.session_state[f"sub_select__{maj}"] = sub
                 st.rerun()
     else:
-        st.caption("No matches - try browsing the categories below instead, or use Advanced / Custom Table.")
+        st.caption(
+            "No matches for that exact phrasing - try fewer/different words, browse the "
+            "categories below, or use Advanced / Custom Table. (Full question-style search "
+            "like \"why is my order stuck\" needs the guided Help flow, not keyword search - "
+            "see the note below.)"
+        )
     st.divider()
 
-major = st.selectbox("...or browse by category", MAJOR_CATEGORIES, key="draft_major")
+entry = st.selectbox("...or browse: is this a report, or an ad-hoc/custom search?",
+                      ENTRY_POINTS, key="draft_entry")
+
+if entry == "Reports":
+    major = st.selectbox("Which area?", DOMAINS, key="domain_select")
+else:
+    major = ADVANCED_LABEL
 
 try:
     if major == ADVANCED_LABEL:
@@ -385,9 +466,36 @@ try:
         st.markdown("**1. What are you searching for?**")
         st.caption("Fill in what you already know - an order code, a SKU, a date range. "
                     "Leave everything blank to see a broad, unfiltered preview.")
-        filled_conditions = render_filters(d["filters"], key_ns, quick_labels=d.get("quick_filters"))
+
+        # filters that resolve a token embedded in the JOIN itself (not just
+        # the WHERE clause) need special handling - collected separately so
+        # render_filters only deals with ordinary WHERE-clause filters
+        join_token_filters = [f for f in d["filters"] if f.get("resolves_join_token")]
+        ordinary_filters = [f for f in d["filters"] if not f.get("resolves_join_token")]
+        join_token_values = {}
+        for jtf in join_token_filters:
+            val = st.text_input(f"🔑 {jtf['label']}", key=f"{key_ns}__jointoken__{jtf['resolves_join_token']}")
+            if val.strip():
+                join_token_values[jtf["resolves_join_token"]] = val.strip()
+
+        filled_conditions, satisfied_labels = render_filters(
+            ordinary_filters, key_ns, quick_labels=d.get("quick_filters")
+        )
+        for jtf in join_token_filters:
+            if jtf["resolves_join_token"] in join_token_values:
+                satisfied_labels.add(jtf["label"])
         if not d["filters"]:
             st.caption("_No search filters available for this report - it returns everything by default._")
+
+        resolved_from_join = d["from_join_clause"]
+        for token, val in join_token_values.items():
+            # resolve the code the user typed to the internal id via a
+            # nested lookup, right inside the join - so the user never has
+            # to run a separate query first just to find an internal id
+            table_hint = "tenant" if "tenant" in token.lower() else "facility"
+            resolved_from_join = resolved_from_join.replace(
+                f":{token}", f"(SELECT id FROM {table_hint} WHERE code = '{val}')"
+            )
 
         st.markdown("**2. What do you want to see?**")
         field_labels_all = [f["label"] for f in d["fields"]]
@@ -410,16 +518,45 @@ try:
         draft_block = {
             "anchor_table": d["anchor_table"], "anchor_alias": d["anchor_alias"],
             "from_join_clause": d["from_join_clause"],
+            "_resolved_from_join_clause": resolved_from_join,
             "fields": draft_fields,
             "filled_filter_conditions": filled_conditions,
             "label": f"{major}: {sub}",
         }
         st.markdown("**Preview:**")
+        if filled_conditions or join_token_values:
+            st.caption(f"🔎 Search scope: {len(filled_conditions) + len(join_token_values)} filter(s) "
+                       f"applied within **{schema_name}**")
+        else:
+            st.caption(f"🔎 Search scope: **no filters applied** - this will search all of **{schema_name}**")
         preview = build_combined_query([draft_block], schema_name, RELATIONSHIPS, COMPOSITE_RELATIONSHIPS)
         st.code(preview["joined_sql"], language="sql")
-        if st.button("➕ Add this selection", key=f"{key_ns}__add"):
-            st.session_state.blocks.append(draft_block)
-            st.rerun()
+
+        required_labels = d.get("required_filter_labels")
+        if required_labels:
+            missing = [l for l in required_labels if l not in satisfied_labels]
+            if missing:
+                st.warning(
+                    f"⚠️ This report requires the following before it can be added, to keep "
+                    f"the search fast and precise: {', '.join(missing)}."
+                )
+                st.button("➕ Add this selection", key=f"{key_ns}__add", disabled=True)
+            else:
+                if st.button("➕ Add this selection", key=f"{key_ns}__add"):
+                    st.session_state.blocks.append(draft_block)
+                    st.rerun()
+        elif d.get("requires_scope") and not filled_conditions:
+            st.warning(
+                "⚠️ This report can cover a very large table (potentially every tenant/facility "
+                "in this schema). Fill in at least one search filter above - a Facility, SKU, or "
+                "similar - before adding this to your query, to avoid an unintentionally broad, "
+                "expensive search."
+            )
+            st.button("➕ Add this selection", key=f"{key_ns}__add", disabled=True)
+        else:
+            if st.button("➕ Add this selection", key=f"{key_ns}__add"):
+                st.session_state.blocks.append(draft_block)
+                st.rerun()
 except Exception as e:
     st.error(
         f"Something went wrong building this selection ({e}). "

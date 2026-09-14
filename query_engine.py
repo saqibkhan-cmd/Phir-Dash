@@ -78,7 +78,8 @@ def build_block_subquery(block, schema, alias, extra_hidden_cols=None):
     Returns (subquery_sql, output_field_labels) where output_field_labels
     maps each selected field's label to its column name inside the subquery.
     """
-    from_join = qualify_from_join_clause(unescape(block["from_join_clause"]), schema)
+    from_join = block.get("_resolved_from_join_clause", block["from_join_clause"])
+    from_join = qualify_from_join_clause(unescape(from_join), schema)
 
     select_parts = []
     output_labels = {}
@@ -112,7 +113,9 @@ def build_combined_query(blocks, schema, relationships, composite_relationships)
     if len(blocks) == 1:
         sq, labels = build_block_subquery(blocks[0], schema, "b0")
         # for a single block, just select straight from its own from_join (no need to nest)
-        from_join = qualify_from_join_clause(unescape(blocks[0]["from_join_clause"]), schema)
+        from_join = qualify_from_join_clause(
+            unescape(blocks[0].get("_resolved_from_join_clause", blocks[0]["from_join_clause"])), schema
+        )
         select_parts = [f"{unescape(f['expr'])} AS `{f['label']}`" for f in blocks[0]["fields"]]
         where_parts = [unescape(w) for w in blocks[0].get("filled_filter_conditions", [])]
         sql = "SELECT\n    " + ",\n    ".join(select_parts) + "\n" + from_join
