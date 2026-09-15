@@ -130,18 +130,27 @@ def from_raw_table(table, label, field_names=None, description=None):
     quick_labels = pick_quick_fields(fields)
 
     # raw tables (no matching export config) get no filters otherwise - add
-    # a simple "contains" search on code/name if those columns exist, so a
-    # lookup like "find the role with PII in its code" is possible without
-    # dropping into Advanced mode
+    # a "multi" search on any identifying column that exists: comma-separated
+    # values become an IN (...) list, a single value works too
     all_col_names = {c["name"] for c in TABLES[table]["columns"]}
     filters = []
-    for search_col in ("code", "name", "sku_code", "facility_code", "shelf_code", "batch_code", "status_code"):
+    SEARCHABLE_COLS = ("code", "name", "sku_code", "facility_code", "shelf_code",
+                       "batch_code", "status_code", "source_code", "display_name")
+    for search_col in SEARCHABLE_COLS:
         if search_col in all_col_names:
+            token = f"{search_col}Values"
             filters.append({
-                "label": f"{humanize(search_col)} contains",
-                "condition": f"{alias}.{search_col} LIKE CONCAT('%', :{search_col}Contains, '%')",
-                "type": "text",
+                "label": f"{humanize(search_col)} (comma-separated for multiple)",
+                "condition": f"{alias}.{search_col} IN :{token}",
+                "type": "multi",
             })
+    # tenant/facility scoping - shared schemas mean an unscoped search can
+    # span every tenant/facility at once, so offer these wherever the raw
+    # id columns exist (not code-resolved here - see README limitations)
+    if "tenant_id" in all_col_names:
+        filters.insert(0, {"label": "Tenant Id equals", "condition": f"{alias}.tenant_id = :tenantId", "type": "number"})
+    if "facility_id" in all_col_names:
+        filters.append({"label": "Facility Id equals", "condition": f"{alias}.facility_id = :facilityId", "type": "number"})
 
     return {
         "label": label,
@@ -155,7 +164,7 @@ def from_raw_table(table, label, field_names=None, description=None):
         "quick_fields": quick_labels,
         "filters": filters,
         "quick_filters": [f["label"] for f in filters],
-        "requires_scope": table in HIGH_RISK_TABLES,
+        "requires_scope": table in HIGH_RISK_TABLES or "tenant_id" in all_col_names or "facility_id" in all_col_names,
     }
 
 
@@ -171,12 +180,118 @@ TAXONOMY = {
     },
     "Inventory": {
         "Shelfwise Inventory": from_export("Shelfwise Inventory"),
-        "Inventory Blocked Against Orders": from_raw_table(
-            "item_type_inventory_allocation", "Inventory Blocked Against Orders", None,
-            description="Find inventory reserved/blocked for specific sale orders - search by "
-                        "SKU or facility to see how much is allocated, and to which order, "
-                        "broken down by allocation status (ALLOCATED, ADDED_IN_PICKLIST, "
-                        "PICKLIST_SCAN_COMPLETE)."),
+        "Inventory Blocked Against Orders": {
+            "label": "Inventory Blocked Against Orders",
+            "description": "Full breakdown of where blocked quantity for a SKU/facility is "
+                           "sitting: open B2C items, B2B allocations, B2C cancelled-but-not-"
+                           "put-back items, and B2B put-back-pending quantity. This is the "
+                           "verified 4-part answer, not a simplified single-table lookup.",
+            "anchor_table": "sale_order_item",
+            "anchor_alias": "soi",
+            "source": "raw",
+            "export_name": None,
+            "fields": [],
+            "quick_fields": [],
+            "filters": [
+                {"label": "SKU Code (required)", "condition": None, "type": "text"},
+                {"label": "Facility Code (required)", "condition": None, "type": "text"},
+            ],
+            "quick_filters": ["SKU Code (required)", "Facility Code (required)"],
+            "requires_scope": True,
+            "required_filter_labels": ["SKU Code (required)", "Facility Code (required)"],
+            "custom_sql_template": """
+-- Where is blocked quantity for SKU {sku_code} at facility {facility_code}?
+-- (B2C open statuses)
+SELECT
+    'B2C_OPEN' AS source,
+    soi.item_type_inventory_id,
+    soi.code AS sale_order_item_code,
+    so.code AS sale_order_code,
+    soi.quantity AS blocked_qty
+FROM {schema}.sale_order_item soi
+JOIN {schema}.sale_order so ON so.id = soi.sale_order_id
+LEFT JOIN {schema}.shipping_package sp ON soi.shipping_package_id = sp.id
+WHERE soi.item_type_inventory_id IN (
+    SELECT iti.id FROM {schema}.item_type_inventory iti
+    JOIN {schema}.item_type it ON it.id = iti.item_type_id
+    JOIN {schema}.facility f ON f.id = iti.facility_id
+    JOIN {schema}.party p ON p.id = f.id
+    WHERE it.sku_code = '{sku_code}' AND p.code = '{facility_code}'
+  )
+  AND soi.status_code IN ('FULFILLABLE','PICKING_FOR_STAGING','PICKING_FOR_INVOICING','STAGED')
+  AND (sp.id IS NULL OR sp.status_code IN ('CREATED','PICKING','PICKED','LOCATION_NOT_SERVICEABLE','PENDING_CUSTOMIZATION','CUSTOMIZATION_COMPLETE'))
+
+UNION ALL
+
+-- B2B allocations
+SELECT
+    'B2B_ALLOCATED' AS source,
+    itia.item_type_inventory_id,
+    soi.code AS sale_order_item_code,
+    so.code AS sale_order_code,
+    itia.quantity AS blocked_qty
+FROM {schema}.item_type_inventory_allocation itia
+JOIN {schema}.sale_order_item soi ON itia.sale_order_item_id = soi.id
+JOIN {schema}.sale_order so ON so.id = soi.sale_order_id
+LEFT JOIN {schema}.shipping_package sp ON soi.shipping_package_id = sp.id
+WHERE itia.item_type_inventory_id IN (
+    SELECT iti.id FROM {schema}.item_type_inventory iti
+    JOIN {schema}.item_type it ON it.id = iti.item_type_id
+    JOIN {schema}.facility f ON f.id = iti.facility_id
+    JOIN {schema}.party p ON p.id = f.id
+    WHERE it.sku_code = '{sku_code}' AND p.code = '{facility_code}'
+  )
+  AND soi.status_code IN ('FULFILLABLE','PICKING_FOR_STAGING','PICKING_FOR_INVOICING','STAGED')
+  AND (sp.id IS NULL OR sp.status_code IN ('CREATED','PICKING','PICKED','LOCATION_NOT_SERVICEABLE','PENDING_CUSTOMIZATION','CUSTOMIZATION_COMPLETE'))
+  AND itia.status_code IN ('ALLOCATED','ADDED_IN_PICKLIST','PICKLIST_SCAN_COMPLETE')
+
+UNION ALL
+
+-- B2C cancelled + putback pending
+SELECT
+    'B2C_CANCELLED_PUTBACK_PENDING' AS source,
+    soi.item_type_inventory_id,
+    soi.code AS sale_order_item_code,
+    so.code AS sale_order_code,
+    1 AS blocked_qty
+FROM {schema}.sale_order_item soi
+JOIN {schema}.sale_order so ON soi.sale_order_id = so.id
+JOIN {schema}.picklist_item pi ON soi.code = pi.sale_order_item_code AND so.code = pi.sale_order_code
+JOIN {schema}.picklist p2 ON p2.id = pi.picklist_id
+WHERE soi.item_type_inventory_id IN (
+    SELECT iti.id FROM {schema}.item_type_inventory iti
+    JOIN {schema}.item_type it ON it.id = iti.item_type_id
+    JOIN {schema}.facility f ON f.id = iti.facility_id
+    JOIN {schema}.party pty ON pty.id = f.id
+    WHERE it.sku_code = '{sku_code}' AND pty.code = '{facility_code}'
+  )
+  AND soi.status_code = 'CANCELLED'
+  AND pi.status_code = 'PUTBACK_PENDING'
+
+UNION ALL
+
+-- B2B putback pending qty
+SELECT
+    'B2B_PUTBACK_PENDING' AS source,
+    iti.id AS item_type_inventory_id,
+    NULL AS sale_order_item_code,
+    NULL AS sale_order_code,
+    SUM(pid.putback_pending_qty) AS blocked_qty
+FROM {schema}.picklist_detail pd
+JOIN {schema}.picklist_item_detail pid ON pd.id = pid.picklist_id
+JOIN {schema}.item_type_inventory iti
+    ON iti.item_type_id = pid.item_type_id
+    AND iti.shelf_id = pid.shelf_id
+    AND iti.batch_id <=> pid.batch_id
+JOIN {schema}.item_type it ON it.id = iti.item_type_id
+JOIN {schema}.facility f ON f.id = iti.facility_id
+JOIN {schema}.party pty ON pty.id = f.id
+WHERE it.sku_code = '{sku_code}' AND pty.code = '{facility_code}'
+  AND pd.status <> 'CLOSED'
+GROUP BY iti.id
+LIMIT 500;
+""",
+        },
         "Inventory Worth": from_export("Inventory Worth"),
         "Inventory Worth By Category": from_export("Inventory Worth By Category"),
         "Inventory Aging": from_export("Inventory Aging"),
@@ -217,7 +332,6 @@ TAXONOMY = {
         "Category": from_export("Category"),
         "Category Section Mapping": from_export("Category Section Mapping"),
         "Dropship Facility Item Master": from_export("Dropship Facility Item Master"),
-        "Tax Type Configuration": from_export("Tax Type Configuration"),
     },
     "Access / User": {
         "Users": from_export("Users"),
@@ -249,6 +363,8 @@ TAXONOMY = {
         "Shelf Report": from_export("Shelf Report"),
         "Warehouse Productivity Tracker": from_export("PRODUCTIVITY TRACKER",
                                                         label="Warehouse Productivity Tracker"),
+        "Gatepass": from_export("Gatepass"),
+        "Inbound Gatepass": from_export("Inbound GatePass"),
     },
     "Returns": {
         "Reverse Pickup": from_export("Reverse Pickup"),
@@ -265,8 +381,6 @@ TAXONOMY = {
         "Invoice": from_export("Invoice"),
         "Shipping Manifest": from_export("Shipping Manifest"),
         "Box / Packslip": from_export("Box Packslip Report"),
-        "Gatepass": from_export("Gatepass"),
-        "Inbound Gatepass": from_export("Inbound GatePass"),
     },
     "Finance / Tax": {
         "Transaction Ledger": from_export("Transaction Ledger"),
@@ -278,6 +392,7 @@ TAXONOMY = {
         "Tally ERP9": from_export("Tally ERP9"),
         "Tally GST Report": from_export("Tally GST Report"),
         "Tally Return GST Report": from_export("Tally Return GST Report"),
+        "Tax Type Configuration": from_export("Tax Type Configuration"),
     },
     "Audit / History": {
         # Hand-built, not from an export config - closes a real gap found
@@ -455,6 +570,94 @@ for (maj, sub), token in JOIN_TOKEN_PATCHES.items():
         resolved[maj][sub]["quick_filters"] = ["Tenant Code (required)"] + resolved[maj][sub]["quick_filters"]
         resolved[maj][sub]["requires_scope"] = True
         resolved[maj][sub]["required_filter_labels"] = ["Tenant Code (required)"]
+
+# ---------------------------------------------------------------------------
+# Full-database coverage: the ~82 categories above came from real Redash
+# export configs (reference material for how reports are structured), but
+# the user made clear the export configs were never meant to be the outer
+# boundary of what's searchable - every table in the schema should be
+# reachable, not just the ones some pre-built report happened to cover.
+# For every table not already covered above, auto-generate a raw-table
+# entry (fields + comma-separated multi-value filters on any identifying
+# column) and assign it to the most relevant domain by keyword match.
+# ---------------------------------------------------------------------------
+already_covered_tables = set()
+for maj, subs in resolved.items():
+    for sub, d in subs.items():
+        already_covered_tables.add(d["anchor_table"])
+
+ALL_TABLES = sorted(TABLES.keys())
+UNCOVERED_TABLES = [t for t in ALL_TABLES if t not in already_covered_tables]
+
+# Ordered keyword rules - first match wins. Table name substrings, not
+# whole-word matches, since Uniware table names are snake_case compounds.
+DOMAIN_KEYWORD_RULES = [
+    ("Audit / History", ["_audit", "_history", "sanity_", "archival_audit", "event_scheduler_log",
+                          "deleted_entity", "deleted_sale_order", "snapshot_transaction",
+                          "entity_source_reference", "iti_mismatch", "iti_snapshot", "itis_mismatch",
+                          "inventory_mismatch", "monitor_inv_mismatch"]),
+    ("Technical / System", ["qrtz_", "revinfo", "oauth_", "binary_object", "blindindex",
+                             "vault_key", "system_configuration", "system_health", "release_version",
+                             "dashboard_widget", "ui_custom_list", "environment_property", "feature",
+                             "job_execution_tracker", "onetime_task", "async_script_instruction",
+                             "triggers_un_", "long_running_processlist", "write_ahead_transaction_log",
+                             "export_job", "import_job", "import_group", "email_template", "sms_",
+                             "print_template", "search_types", "^task$", "task_parameter",
+                             "digital_signature", "pii_data_masking", "api_user", "custom_field_metadata",
+                             "custom_field_value", "sequence", "tag", "release_version",
+                             "environment_property"]),
+    ("Purchasing", ["purchase_", "vendor_", "inflow_receipt", "gate_pass_order", "grn"]),
+    ("Returns", ["return_", "reverse_pickup", "courier_return", "reshipment"]),
+    ("Shipping", ["shipping_", "shipment_", "box", "handling_unit", "multi_part_shipping",
+                  "quick_dispatch", "outbound_gate_pass", "gst_einvoice"]),
+    ("Operations", ["putaway", "work_order", "kit_", "bundle_", "cycle_count", "sub_cycle_count",
+                     "picklist", "pick_area", "pick_batch", "pick_bucket", "pick_set",
+                     "packing_station", "packing_access_pattern", "quality_check", "rejection_reason",
+                     "dispatch_tolerance"]),
+    ("Facility", ["facility_", "location", "section", "shelf", "volumetric_dimensions",
+                   "carton_type"]),
+    ("Channels", ["channel_"]),
+    ("Catalog", ["item_type", "item_detail_field", "item_state_machine", "item_status",
+                  "product", "discount_group", "sku_tax_class_mapping", "ean_scan_identifier",
+                  "qr_identification"]),
+    ("Access / User", ["user_", "role", "access_", "product_role", "product_access_resource"]),
+    ("Finance / Tax", ["tax_", "invoice", "vendor_invoice", "payment_", "gst_", "billing_party"]),
+    ("Orders", ["sale_order"]),
+    ("Inventory", ["item_type_inventory", "inventory_", "iti_", "expired_batch", "batch",
+                    "pool_", "ledger_sku"]),
+]
+
+
+def assign_domain(table_name):
+    tl = table_name.lower()
+    for domain, keywords in DOMAIN_KEYWORD_RULES:
+        for kw in keywords:
+            if kw.startswith("^") and kw.endswith("$"):
+                if tl == kw[1:-1]:
+                    return domain
+            elif kw in tl:
+                return domain
+    return "Technical / System"
+
+
+added_count = 0
+for table in UNCOVERED_TABLES:
+    domain = assign_domain(table)
+    label = " ".join(w.capitalize() for w in table.replace("QRTZ_", "Quartz_").split("_"))
+    entry = from_raw_table(table, label, None)
+    if entry is None:
+        continue
+    resolved.setdefault(domain, {})
+    # avoid rare label collisions with an existing curated entry
+    final_label = label
+    suffix = 2
+    while final_label in resolved[domain]:
+        final_label = f"{label} ({suffix})"
+        suffix += 1
+    resolved[domain][final_label] = entry
+    added_count += 1
+
+print(f"Auto-generated entries for previously-uncovered tables: {added_count}")
 
 output = {"categories": resolved}
 

@@ -78,6 +78,16 @@ def build_block_subquery(block, schema, alias, extra_hidden_cols=None):
     Returns (subquery_sql, output_field_labels) where output_field_labels
     maps each selected field's label to its column name inside the subquery.
     """
+    if block.get("custom_sql_template"):
+        # escape hatch for queries that don't fit the single SELECT/FROM
+        # shape (e.g. a UNION ALL across differently-shaped SELECTs) -
+        # substitute schema + filter tokens directly into a hand-built
+        # template rather than trying to force it through field/join
+        # composition. Used for the blocked-inventory breakdown, which is
+        # a verified 4-part UNION, not a single table lookup.
+        sql = block["custom_sql_template"].format(schema=schema, **block.get("template_values", {}))
+        return f"(\n{sql}\n) AS {alias}", block.get("template_output_labels", {})
+
     from_join = block.get("_resolved_from_join_clause", block["from_join_clause"])
     from_join = qualify_from_join_clause(unescape(from_join), schema)
 
@@ -111,13 +121,17 @@ def build_combined_query(blocks, schema, relationships, composite_relationships)
     }
     """
     if len(blocks) == 1:
-        sq, labels = build_block_subquery(blocks[0], schema, "b0")
+        blk = blocks[0]
+        if blk.get("custom_sql_template"):
+            sql = blk["custom_sql_template"].format(schema=schema, **blk.get("template_values", {}))
+            return {"joined_sql": sql.strip(), "unlinked_blocks": [], "standalone_sqls": [], "link_notes": []}
+        sq, labels = build_block_subquery(blk, schema, "b0")
         # for a single block, just select straight from its own from_join (no need to nest)
         from_join = qualify_from_join_clause(
-            unescape(blocks[0].get("_resolved_from_join_clause", blocks[0]["from_join_clause"])), schema
+            unescape(blk.get("_resolved_from_join_clause", blk["from_join_clause"])), schema
         )
-        select_parts = [f"{unescape(f['expr'])} AS `{f['label']}`" for f in blocks[0]["fields"]]
-        where_parts = [unescape(w) for w in blocks[0].get("filled_filter_conditions", [])]
+        select_parts = [f"{unescape(f['expr'])} AS `{f['label']}`" for f in blk["fields"]]
+        where_parts = [unescape(w) for w in blk.get("filled_filter_conditions", [])]
         sql = "SELECT\n    " + ",\n    ".join(select_parts) + "\n" + from_join
         if where_parts:
             sql += "\nWHERE " + "\n  AND ".join(where_parts)
